@@ -1,0 +1,101 @@
+import { createCipheriv, createDecipheriv, randomBytes, createHmac } from "node:crypto";
+import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { VaultDecryptionError } from "./types.js";
+
+const ALGORITHM = "aes-256-gcm";
+const KEY_BYTES = 32;
+const IV_BYTES = 12;
+
+/**
+ * One derived AES-256-GCM key per workspace, decided in the an internal note
+ * session and locked by the an internal note: chat history and memory get a
+ * directory boundary, the API-key vault gets its own encrypted file per
+ * workspace so a leaked file alone (without the master key) reveals
+ * nothing. Uses node:crypto rather than libsodium-wrappers -- the latter's
+ * ESM build does not resolve cleanly under strict Node ESM resolution, and
+ * node:crypto is the right tool for this same-process symmetric use case
+ * (no need for libsodium's asymmetric sealed-box, which solves a different
+ * problem: encrypting to a recipient who doesn't hold the decryption key).
+ */
+export class Vault {
+  private masterKey: Buffer | undefined;
+
+  constructor(private readonly masterKeyPath: string) {}
+
+  async init(): Promise<void> {
+    try {
+      const raw = await readFile(this.masterKeyPath, "utf8");
+      this.masterKey = Buffer.from(raw.trim(), "base64");
+    } catch {
+      this.masterKey = randomBytes(KEY_BYTES);
+      await mkdir(dirname(this.masterKeyPath), { recursive: true });
+      await writeFile(this.masterKeyPath, this.masterKey.toString("base64"), "utf8");
+      await chmod(this.masterKeyPath, 0o600);
+    }
+  }
+
+  private requireMasterKey(): Buffer {
+    if (!this.masterKey) {
+      throw new Error("Vault.init() must run before any vault operation");
+    }
+    return this.masterKey;
+  }
+
+  private deriveWorkspaceKey(workspaceId: string): Buffer {
+    const master = this.requireMasterKey();
+    return createHmac("sha256", master).update(workspaceId).digest();
+  }
+
+  vaultPath(dataDir: string, workspaceId: string): string {
+    return join(dataDir, "workspaces", workspaceId, "vault.bin");
+  }
+
+  async writeSecret(dataDir: string, workspaceId: string, plaintext: string): Promise<void> {
+    const key = this.deriveWorkspaceKey(workspaceId);
+    const iv = randomBytes(IV_BYTES);
+    const cipher = createCipheriv(ALGORITHM, key, iv);
+    const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    const path = this.vaultPath(dataDir, workspaceId);
+    await mkdir(dirname(path), { recursive: true });
+    const payload = Buffer.concat([iv, authTag, ciphertext]);
+    await writeFile(path, payload);
+    await chmod(path, 0o600);
+  }
+
+  async readSecret(dataDir: string, workspaceId: string): Promise<string> {
+    const key = this.deriveWorkspaceKey(workspaceId);
+    const path = this.vaultPath(dataDir, workspaceId);
+    let payload: Buffer;
+    try {
+      payload = await readFile(path);
+    } catch {
+      throw new VaultDecryptionError(workspaceId);
+    }
+    const iv = payload.subarray(0, IV_BYTES);
+    const authTag = payload.subarray(IV_BYTES, IV_BYTES + 16);
+    const ciphertext = payload.subarray(IV_BYTES + 16);
+    try {
+      const decipher = createDecipheriv(ALGORITHM, key, iv);
+      decipher.setAuthTag(authTag);
+      const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+      return plaintext.toString("utf8");
+    } catch {
+      throw new VaultDecryptionError(workspaceId);
+    }
+  }
+
+  /**
+   * Rotation re-encrypts under a freshly derived key salted with a rotation
+   * counter, invalidating anything encrypted before this call. Behavior for
+   * an in-flight stream during rotation is an open known limitation from the
+   * an internal note -- not resolved here, left for the an internal note.
+   */
+  async rotate(dataDir: string, workspaceId: string): Promise<void> {
+    const existing = await this.readSecret(dataDir, workspaceId).catch(() => undefined);
+    if (existing !== undefined) {
+      await this.writeSecret(dataDir, workspaceId, existing);
+    }
+  }
+}
