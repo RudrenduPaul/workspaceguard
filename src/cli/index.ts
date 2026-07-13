@@ -46,12 +46,24 @@ async function main(): Promise<void> {
       console.log("No cross-workspace leaks detected.");
       return;
     }
+    case "rotate-key": {
+      const [workspaceId] = args;
+      if (!workspaceId) {
+        console.error("usage: workspaceguard rotate-key <id>");
+        process.exitCode = 1;
+        return;
+      }
+      const guard = await createWorkspaceGuard({ dataDir, backend: new MockAdapter() });
+      await guard.rotateKey(workspaceId);
+      console.log(`workspace ${workspaceId} key rotated`);
+      return;
+    }
     case "scan": {
       console.log("isolation config scan: no misconfigurations detected (scaffold stub)");
       return;
     }
     default: {
-      console.error("usage: workspaceguard <init|add-workspace|status|scan>");
+      console.error("usage: workspaceguard <init|add-workspace|status|rotate-key|scan>");
       process.exitCode = 1;
     }
   }
