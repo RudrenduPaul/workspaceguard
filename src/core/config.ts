@@ -24,15 +24,36 @@ export async function saveConfig(configPath: string, config: WorkspaceGuardConfi
   await writeFile(configPath, YAML.stringify(config), "utf8");
 }
 
-/** add-workspace on an existing id is idempotent -- returns the existing entry, never overwrites. */
+export class DuplicateIdentityError extends Error {
+  constructor(
+    public readonly identity: string,
+    public readonly existingWorkspaceId: string,
+  ) {
+    super(`identity "${identity}" is already assigned to workspace "${existingWorkspaceId}"`);
+    this.name = "DuplicateIdentityError";
+  }
+}
+
+/**
+ * add-workspace on an existing id is idempotent -- returns the existing
+ * entry, never overwrites. Rejects loudly if the
+ * identity is already claimed by a DIFFERENT workspace id: without this check, two workspace ids could silently share one
+ * identity, and resolveWorkspaceId would deterministically route to
+ * whichever was added first, merging two workspaces from the routing
+ * layer's perspective without either operator being told.
+ */
 export function upsertWorkspace(
   config: WorkspaceGuardConfig,
   workspaceId: string,
   identity: string,
 ): WorkspaceGuardConfig {
-  const existing = config.workspaces.find((w) => w.workspaceId === workspaceId);
-  if (existing) {
+  const existingById = config.workspaces.find((w) => w.workspaceId === workspaceId);
+  if (existingById) {
     return config;
+  }
+  const existingByIdentity = config.workspaces.find((w) => w.identity === identity);
+  if (existingByIdentity) {
+    throw new DuplicateIdentityError(identity, existingByIdentity.workspaceId);
   }
   return { ...config, workspaces: [...config.workspaces, { workspaceId, identity }] };
 }

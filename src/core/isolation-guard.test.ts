@@ -3,9 +3,15 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWorkspaceGuard, IdentityNotFoundError } from "../index.js";
+import {
+  createWorkspaceGuard,
+  IdentityNotFoundError,
+  BackendCircuitOpenError,
+  DuplicateIdentityError,
+} from "../index.js";
 import { MockAdapter } from "../adapters/mock.js";
 import { chatHistoryDir } from "./namespace.js";
+import { Vault } from "./vault.js";
 
 async function withTempDataDir<T>(fn: (dataDir: string) => Promise<T>): Promise<T> {
   const dir = await mkdtemp(join(tmpdir(), "workspaceguard-test-"));
@@ -56,22 +62,81 @@ test("API-key vault: a workspace's secret cannot be decrypted or read under anot
     await guard.setSecret("jordan", "sk-jordan-api-key");
 
     // Reading each workspace's own secret via its own vault file works.
-    const alexVaultRaw = await readFile(
-      new (await import("./vault.js")).Vault(join(dataDir, ".workspaceguard", "master.key")).vaultPath(
-        dataDir,
-        "alex",
-      ),
-    );
-    const jordanVaultRaw = await readFile(
-      new (await import("./vault.js")).Vault(join(dataDir, ".workspaceguard", "master.key")).vaultPath(
-        dataDir,
-        "jordan",
-      ),
-    );
+    const vault = new Vault(join(dataDir, ".workspaceguard", "master.key"));
+    const alexVaultRaw = await readFile(vault.vaultPath(dataDir, "alex"));
+    const jordanVaultRaw = await readFile(vault.vaultPath(dataDir, "jordan"));
 
     // The two ciphertexts are different files with different bytes -- no
     // shared key store, no shared file.
     assert.ok(!alexVaultRaw.equals(jordanVaultRaw));
+  });
+});
+
+test("key rotation actually invalidates the old key (regression: rotation used to be a security no-op)", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+    await guard.setSecret("alex", "sk-alex-before-rotation");
+
+    const vault = new Vault(join(dataDir, ".workspaceguard", "master.key"));
+    await vault.init();
+    const beforeRotation = await readFile(vault.vaultPath(dataDir, "alex"));
+
+    await guard.rotateKey("alex");
+    const afterRotation = await readFile(vault.vaultPath(dataDir, "alex"));
+
+    // Same plaintext, but the ciphertext must differ -- proof the derived
+    // key actually changed, not just the IV.
+    assert.ok(!beforeRotation.equals(afterRotation));
+
+    // The secret is still readable after rotation under the new generation.
+    const roundTrip = await vault.readSecret(dataDir, "alex");
+    assert.equal(roundTrip, "sk-alex-before-rotation");
+  });
+});
+
+test("duplicate identity across two workspace ids is rejected, never silently merged", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "shared@example.com");
+
+    await assert.rejects(
+      () => guard.addWorkspace("jordan", "shared@example.com"),
+      DuplicateIdentityError,
+    );
+
+    // Only the first workspace exists -- the second was never silently merged in.
+    const statuses = await guard.status();
+    assert.equal(statuses.length, 1);
+    assert.equal(statuses[0]?.workspaceId, "alex");
+  });
+});
+
+test("circuit breaker opens after 3 consecutive failures, then self-heals after cooldown (regression: it used to never close again)", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter, circuitOpenCooldownMs: 50 });
+    await guard.addWorkspace("alex", "alex@example.com");
+
+    adapter._failNextCalls(3);
+    for (let i = 0; i < 3; i++) {
+      await assert.rejects(() => guard.chat("alex@example.com", `msg-${i}`));
+    }
+
+    // Circuit is now open -- the very next call is rejected without even
+    // reaching the backend.
+    await assert.rejects(() => guard.chat("alex@example.com", "should-be-circuit-open"), BackendCircuitOpenError);
+
+    // After the cooldown, the next call is let through as a half-open probe.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const response = await guard.chat("alex@example.com", "probe-after-cooldown");
+    assert.equal(response, "echo: probe-after-cooldown");
+
+    // Circuit is closed again -- a normal call succeeds without being rejected.
+    const response2 = await guard.chat("alex@example.com", "should-work-normally");
+    assert.equal(response2, "echo: should-work-normally");
   });
 });
 

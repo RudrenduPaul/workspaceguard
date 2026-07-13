@@ -10,10 +10,13 @@ export {
   BackendUnreachableError,
   BackendCircuitOpenError,
 } from "./core/types.js";
+export { DuplicateIdentityError } from "./core/config.js";
 
 export interface CreateWorkspaceGuardOptions {
   dataDir: string;
   backend: BackendAdapter;
+  /** Test-only override for the circuit breaker's open-state cooldown. */
+  circuitOpenCooldownMs?: number;
 }
 
 /**
@@ -27,6 +30,7 @@ export async function createWorkspaceGuard(options: CreateWorkspaceGuardOptions)
   const guard = new IsolationGuard({
     dataDir: options.dataDir,
     backend: options.backend,
+    circuitOpenCooldownMs: options.circuitOpenCooldownMs,
   });
   await guard.init();
   return guard;

@@ -41,17 +41,31 @@ export class Vault {
     return this.masterKey;
   }
 
-  private deriveWorkspaceKey(workspaceId: string): Buffer {
+  private deriveWorkspaceKey(workspaceId: string, generation: number): Buffer {
     const master = this.requireMasterKey();
-    return createHmac("sha256", master).update(workspaceId).digest();
+    return createHmac("sha256", master).update(`${workspaceId}:${generation}`).digest();
   }
 
   vaultPath(dataDir: string, workspaceId: string): string {
     return join(dataDir, "workspaces", workspaceId, "vault.bin");
   }
 
+  private generationPath(dataDir: string, workspaceId: string): string {
+    return join(dataDir, "workspaces", workspaceId, "key-generation");
+  }
+
+  private async readGeneration(dataDir: string, workspaceId: string): Promise<number> {
+    try {
+      const raw = await readFile(this.generationPath(dataDir, workspaceId), "utf8");
+      return Number.parseInt(raw.trim(), 10) || 0;
+    } catch {
+      return 0;
+    }
+  }
+
   async writeSecret(dataDir: string, workspaceId: string, plaintext: string): Promise<void> {
-    const key = this.deriveWorkspaceKey(workspaceId);
+    const generation = await this.readGeneration(dataDir, workspaceId);
+    const key = this.deriveWorkspaceKey(workspaceId, generation);
     const iv = randomBytes(IV_BYTES);
     const cipher = createCipheriv(ALGORITHM, key, iv);
     const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
@@ -64,7 +78,8 @@ export class Vault {
   }
 
   async readSecret(dataDir: string, workspaceId: string): Promise<string> {
-    const key = this.deriveWorkspaceKey(workspaceId);
+    const generation = await this.readGeneration(dataDir, workspaceId);
+    const key = this.deriveWorkspaceKey(workspaceId, generation);
     const path = this.vaultPath(dataDir, workspaceId);
     let payload: Buffer;
     try {
@@ -86,13 +101,20 @@ export class Vault {
   }
 
   /**
-   * Rotation re-encrypts under a freshly derived key salted with a rotation
-   * counter, invalidating anything encrypted before this call. Behavior for
-   * an in-flight stream during rotation is a known open question, not
-   * resolved here.
+   * Rotation increments the per-workspace key generation BEFORE
+   * re-encrypting, so the new ciphertext is under a genuinely different
+   * derived key -- anything encrypted under the old generation can no
+   * longer be decrypted once the generation file is bumped. The original implementation re-derived the same
+   * deterministic key on "rotation," which was a no-op security-wise;
+   * this fixes that. Behavior for an in-flight stream during rotation is
+   * a known open question, not resolved here.
    */
   async rotate(dataDir: string, workspaceId: string): Promise<void> {
     const existing = await this.readSecret(dataDir, workspaceId).catch(() => undefined);
+    const currentGeneration = await this.readGeneration(dataDir, workspaceId);
+    const nextGeneration = currentGeneration + 1;
+    await mkdir(dirname(this.generationPath(dataDir, workspaceId)), { recursive: true });
+    await writeFile(this.generationPath(dataDir, workspaceId), String(nextGeneration), "utf8");
     if (existing !== undefined) {
       await this.writeSecret(dataDir, workspaceId, existing);
     }
