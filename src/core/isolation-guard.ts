@@ -11,6 +11,8 @@ export interface IsolationGuardOptions {
   dataDir: string;
   backend: BackendAdapter;
   logger?: Logger;
+  /** Test-only override for the circuit breaker's open-state cooldown. */
+  circuitOpenCooldownMs?: number;
 }
 
 /**
@@ -33,7 +35,7 @@ export class IsolationGuard {
     this.backend = options.backend;
     this.logger = options.logger ?? new ConsoleLogger();
     this.vault = new Vault(join(this.dataDir, ".workspaceguard", "master.key"));
-    this.circuit = new CircuitBreaker(this.backend.name, this.logger);
+    this.circuit = new CircuitBreaker(this.backend.name, this.logger, options.circuitOpenCooldownMs);
   }
 
   private get configPath(): string {

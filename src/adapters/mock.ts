@@ -10,16 +10,26 @@ import type { BackendAdapter } from "../core/types.js";
 export class MockAdapter implements BackendAdapter {
   readonly name = "mock";
   private readonly messagesByWorkspace = new Map<string, string[]>();
+  private failuresRemaining = 0;
 
   async healthCheck(): Promise<boolean> {
     return true;
   }
 
   async forwardChat(workspaceId: string, message: string): Promise<string> {
+    if (this.failuresRemaining > 0) {
+      this.failuresRemaining -= 1;
+      throw new Error("simulated backend failure");
+    }
     const existing = this.messagesByWorkspace.get(workspaceId) ?? [];
     existing.push(message);
     this.messagesByWorkspace.set(workspaceId, existing);
     return `echo: ${message}`;
+  }
+
+  /** Test-only: makes the next N forwardChat calls fail, to exercise the circuit breaker. */
+  _failNextCalls(n: number): void {
+    this.failuresRemaining = n;
   }
 
   /** Test-only inspection point -- never exposed through the public adapter interface. */
