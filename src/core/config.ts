@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import YAML from "yaml";
 import type { WorkspaceGuardConfig } from "./types.js";
+import { WorkspaceNotFoundError } from "./types.js";
 
 const DEFAULT_IDENTITY_HEADER = "cf-access-authenticated-user-email";
 
@@ -56,6 +57,31 @@ export function upsertWorkspace(
     throw new DuplicateIdentityError(identity, existingByIdentity.workspaceId);
   }
   return { ...config, workspaces: [...config.workspaces, { workspaceId, identity }] };
+}
+
+/**
+ * Sets (or clears, with `cap === undefined`) a workspace's monthly message
+ * cap. Rejects loudly on an unknown workspace id rather than silently
+ * no-op'ing, matching upsertWorkspace's fail-loud-on-ambiguity precedent.
+ */
+export function setWorkspaceCap(
+  config: WorkspaceGuardConfig,
+  workspaceId: string,
+  cap: number | undefined,
+): WorkspaceGuardConfig {
+  const index = config.workspaces.findIndex((w) => w.workspaceId === workspaceId);
+  if (index === -1) {
+    throw new WorkspaceNotFoundError(workspaceId);
+  }
+  const workspaces = [...config.workspaces];
+  const entry = { ...workspaces[index] };
+  if (cap === undefined) {
+    delete entry.monthlyMessageCap;
+  } else {
+    entry.monthlyMessageCap = cap;
+  }
+  workspaces[index] = entry;
+  return { ...config, workspaces };
 }
 
 export function resolveWorkspaceId(

@@ -2,6 +2,7 @@ import { IsolationGuard } from "./core/isolation-guard.js";
 import type { BackendAdapter } from "./core/types.js";
 
 export { IsolationGuard } from "./core/isolation-guard.js";
+export type { WorkspaceUsageReport } from "./core/isolation-guard.js";
 export type { BackendAdapter } from "./core/types.js";
 export { MockAdapter } from "./adapters/mock.js";
 export {
@@ -9,8 +10,11 @@ export {
   VaultDecryptionError,
   BackendUnreachableError,
   BackendCircuitOpenError,
+  WorkspaceNotFoundError,
 } from "./core/types.js";
 export { DuplicateIdentityError } from "./core/config.js";
+export { QuotaExceededError } from "./core/usage.js";
+export type { WorkspaceUsage } from "./core/usage.js";
 
 export interface CreateWorkspaceGuardOptions {
   dataDir: string;

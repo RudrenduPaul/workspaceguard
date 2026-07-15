@@ -1,16 +1,19 @@
 {
   "name": "workspaceguard",
   "version": "0.1.0",
-  "description": "Per-user workspace isolation sidecar for self-hosted AI assistants",
+  "description": "Per-workspace usage metering and quota caps for shared self-hosted AI assistant deployments",
   "keywords": [
     "self-hosted",
     "ai-assistant",
-    "workspace-isolation",
+    "usage-metering",
+    "quota",
+    "billing",
     "multi-tenant",
     "reverse-proxy",
     "odysseus",
-    "privacy",
-    "docker-compose"
+    "docker-compose",
+    "cli",
+    "agent-native"
   ],
   "homepage": "https://github.com/RudrenduPaul/workspaceguard",
   "repository": {

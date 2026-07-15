@@ -1,11 +1,19 @@
 import { join } from "node:path";
 import type { BackendAdapter, WorkspaceGuardConfig } from "./types.js";
 import { IdentityNotFoundError } from "./types.js";
-import { loadConfig, saveConfig, upsertWorkspace, resolveWorkspaceId } from "./config.js";
+import { loadConfig, saveConfig, upsertWorkspace, resolveWorkspaceId, setWorkspaceCap } from "./config.js";
 import { ensureWorkspaceDirs } from "./namespace.js";
 import { Vault } from "./vault.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { ConsoleLogger, type Logger } from "./log.js";
+import { UsageMeter, type WorkspaceUsage } from "./usage.js";
+
+export interface WorkspaceUsageReport extends WorkspaceUsage {
+  workspaceId: string;
+  identity: string;
+  monthlyMessageCap: number | undefined;
+  percentUsed: number | null;
+}
 
 export interface IsolationGuardOptions {
   dataDir: string;
@@ -28,6 +36,7 @@ export class IsolationGuard {
   private readonly logger: Logger;
   private readonly vault: Vault;
   private readonly circuit: CircuitBreaker;
+  private readonly usage: UsageMeter;
   private config: WorkspaceGuardConfig = { backend: "odysseus", identityHeader: "", workspaces: [] };
 
   constructor(options: IsolationGuardOptions) {
@@ -36,6 +45,7 @@ export class IsolationGuard {
     this.logger = options.logger ?? new ConsoleLogger();
     this.vault = new Vault(join(this.dataDir, ".workspaceguard", "master.key"));
     this.circuit = new CircuitBreaker(this.backend.name, this.logger, options.circuitOpenCooldownMs);
+    this.usage = new UsageMeter(this.dataDir);
   }
 
   private get configPath(): string {
@@ -81,10 +91,44 @@ export class IsolationGuard {
 
   async chat(identityHeaderValue: string | undefined, message: string): Promise<string> {
     const workspaceId = this.resolveWorkspace(identityHeaderValue);
-    return this.circuit.call(() => this.backend.forwardChat(workspaceId, message));
+    const entry = this.config.workspaces.find((w) => w.workspaceId === workspaceId);
+    await this.usage.checkQuota(workspaceId, entry?.monthlyMessageCap);
+    const response = await this.circuit.call(() => this.backend.forwardChat(workspaceId, message));
+    await this.usage.record(workspaceId, message);
+    return response;
   }
 
   async status(): Promise<{ workspaceId: string; identity: string }[]> {
     return this.config.workspaces.map((w) => ({ workspaceId: w.workspaceId, identity: w.identity }));
+  }
+
+  /** Sets (`cap`) or clears (`undefined`) a workspace's monthly message cap. */
+  async setCap(workspaceId: string, cap: number | undefined): Promise<void> {
+    this.config = setWorkspaceCap(this.config, workspaceId, cap);
+    await saveConfig(this.configPath, this.config);
+  }
+
+  /**
+   * The admin-visibility surface this repo actually ships (the OSS free
+   * tier) -- a hosted billing dashboard on top of this data is a separate,
+   * closed-source product, never built in this repo.
+   */
+  async usageReport(): Promise<WorkspaceUsageReport[]> {
+    const ids = this.config.workspaces.map((w) => w.workspaceId);
+    const usageById = await this.usage.getAll(ids);
+    return this.config.workspaces.map((w) => {
+      const usage = usageById[w.workspaceId] ?? { period: "", messageCount: 0, estimatedBytes: 0 };
+      const percentUsed =
+        w.monthlyMessageCap !== undefined && w.monthlyMessageCap > 0
+          ? Math.round((usage.messageCount / w.monthlyMessageCap) * 100)
+          : null;
+      return {
+        workspaceId: w.workspaceId,
+        identity: w.identity,
+        monthlyMessageCap: w.monthlyMessageCap,
+        percentUsed,
+        ...usage,
+      };
+    });
   }
 }
