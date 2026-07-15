@@ -17,7 +17,7 @@ This project originally set out to add per-user workspace isolation (separate ch
 Rather than ship a competing reimplementation of something the target repo already does correctly, this repo keeps its tested isolation engine (namespace separation, an AES-256-GCM vault with real key rotation, fail-closed identity resolution, a self-healing circuit breaker) as the identity-resolution substrate, and builds the layer Odysseus genuinely does not have: usage metering and quota enforcement per workspace. Checked directly against the live `pewdiepie-archdaemon/odysseus` source (`routes/` and `services/` directory listings, 2026-07-15): no billing, usage, or quota code exists anywhere in the repo.
 
 **Free tier (this repo, MIT):** per-workspace message counting, monthly cap enforcement, a CLI/JSON usage report.
-**Not in this repo:** a hosted, multi-tenant billing dashboard is a separate, closed-source product -- described here as a roadmap item, never merged into this MIT codebase (see `an internal note`).
+**Not in this repo:** a hosted, multi-tenant billing dashboard is a separate, closed-source product -- described here as a roadmap item, never merged into this MIT codebase.
 
 ## Install
 
@@ -96,7 +96,7 @@ const report = await guard.usageReport();
 - `src/core/vault.ts`, `src/core/namespace.ts`, `src/core/circuit-breaker.ts` -- the original isolation-engine code, kept as the identity/workspace-boundary substrate the metering layer reads from, not shipped as a competing isolation product.
 - `src/adapters/` -- `BackendAdapter` interface; a real Odysseus HTTP adapter is the next step (currently `MockAdapter` only, same as the original build).
 
-Backend-specific behavior never enters `src/core/` directly -- everything goes through `BackendAdapter` (see `an internal note`).
+Backend-specific behavior never enters `src/core/` directly -- everything goes through `BackendAdapter`.
 
 ## Trust boundary
 
