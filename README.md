@@ -12,9 +12,9 @@ npx workspaceguard usage
 
 ## Why this exists, and why it isn't what it used to be
 
-This project originally set out to add per-user workspace isolation (separate chat history, memory, API keys) to Odysseus. Reading Odysseus's actual source during a feasibility spike found that premise was false: Odysseus already enforces per-user ownership on chat history, memory, and API tokens by default (`AUTH_ENABLED=true`), and its own setup docs walk through exactly the shared-household deployment this project targeted.
+This project originally set out to add per-user workspace isolation (separate chat history, memory, API keys) to a self-hosted AI chat platform. A feasibility spike found that premise was false for the target platform's current default configuration: per-user ownership on chat history, memory, and API tokens is already enforced by default, and its own setup docs walk through the shared-household deployment this project targeted.
 
-Rather than ship a competing reimplementation of something the target repo already does correctly, this repo keeps its tested isolation engine (namespace separation, an AES-256-GCM vault with real key rotation, fail-closed identity resolution, a self-healing circuit breaker) as the identity-resolution substrate, and builds the layer Odysseus genuinely does not have: usage metering and quota enforcement per workspace. Checked directly against the live `pewdiepie-archdaemon/odysseus` source (`routes/` and `services/` directory listings, 2026-07-15): no billing, usage, or quota code exists anywhere in the repo.
+Rather than ship a competing reimplementation of something the target platform already does correctly, this repo keeps its tested isolation engine (namespace separation, an AES-256-GCM vault with real key rotation, fail-closed identity resolution, a self-healing circuit breaker) as the identity-resolution substrate, and builds the layer that platform genuinely does not have: usage metering and quota enforcement per workspace. No billing, usage, or quota code exists in the target platform today.
 
 **Free tier (this repo, MIT):** per-workspace message counting, monthly cap enforcement, a CLI/JSON usage report.
 **Not in this repo:** a hosted, multi-tenant billing dashboard is a separate, closed-source product -- described here as a roadmap item, never merged into this MIT codebase.
