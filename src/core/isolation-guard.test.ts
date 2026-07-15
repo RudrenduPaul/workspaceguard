@@ -8,6 +8,8 @@ import {
   IdentityNotFoundError,
   BackendCircuitOpenError,
   DuplicateIdentityError,
+  QuotaExceededError,
+  WorkspaceNotFoundError,
 } from "../index.js";
 import { MockAdapter } from "../adapters/mock.js";
 import { chatHistoryDir } from "./namespace.js";
@@ -164,5 +166,99 @@ test("add-workspace is idempotent -- calling it twice for the same id does not o
     const statuses = await guard.status();
     assert.equal(statuses.length, 1);
     assert.equal(statuses[0]?.identity, "alex@example.com");
+  });
+});
+
+// Usage-metering + billing wedge (the pivot from per-user isolation, which
+// the target repo already ships natively -- see README).
+
+test("usage metering: chat() increments per-workspace usage, isolated across workspaces", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+    await guard.addWorkspace("jordan", "jordan@example.com");
+
+    await guard.chat("alex@example.com", "hi");
+    await guard.chat("alex@example.com", "hi again");
+    await guard.chat("jordan@example.com", "hello");
+
+    const report = await guard.usageReport();
+    const alex = report.find((r) => r.workspaceId === "alex");
+    const jordan = report.find((r) => r.workspaceId === "jordan");
+    assert.equal(alex?.messageCount, 2);
+    assert.equal(jordan?.messageCount, 1);
+  });
+});
+
+test("quota: a workspace at its monthly cap is blocked, never reaches the backend", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+    await guard.setCap("alex", 1);
+
+    await guard.chat("alex@example.com", "first message, under cap");
+    await assert.rejects(() => guard.chat("alex@example.com", "second message, over cap"), QuotaExceededError);
+
+    // The blocked message never reached the backend.
+    assert.deepEqual(adapter._messagesFor("alex"), ["first message, under cap"]);
+  });
+});
+
+test("quota: one workspace hitting its cap never blocks a sibling workspace with no cap", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+    await guard.addWorkspace("jordan", "jordan@example.com");
+    await guard.setCap("alex", 1);
+
+    await guard.chat("alex@example.com", "msg");
+    await assert.rejects(() => guard.chat("alex@example.com", "over cap"), QuotaExceededError);
+
+    // jordan has no cap -- unaffected by alex's block.
+    const response = await guard.chat("jordan@example.com", "still works");
+    assert.equal(response, "echo: still works");
+  });
+});
+
+test("quota: clearing a cap (set to undefined) lifts the block", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+    await guard.setCap("alex", 1);
+    await guard.chat("alex@example.com", "msg");
+    await assert.rejects(() => guard.chat("alex@example.com", "blocked"), QuotaExceededError);
+
+    await guard.setCap("alex", undefined);
+    const response = await guard.chat("alex@example.com", "unblocked now");
+    assert.equal(response, "echo: unblocked now");
+  });
+});
+
+test("set-cap on an unknown workspace id fails loudly instead of silently no-op'ing", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await assert.rejects(() => guard.setCap("nobody", 5), WorkspaceNotFoundError);
+  });
+});
+
+test("usageReport: percentUsed is computed from cap and current count, null when uncapped", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+    await guard.addWorkspace("jordan", "jordan@example.com");
+    await guard.setCap("alex", 4);
+    await guard.chat("alex@example.com", "one");
+
+    const report = await guard.usageReport();
+    const alex = report.find((r) => r.workspaceId === "alex");
+    const jordan = report.find((r) => r.workspaceId === "jordan");
+    assert.equal(alex?.percentUsed, 25);
+    assert.equal(jordan?.percentUsed, null);
   });
 });

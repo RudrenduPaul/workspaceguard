@@ -1,6 +1,8 @@
 export interface WorkspaceEntry {
   workspaceId: string;
   identity: string;
+  /** Monthly message cap for usage metering. `undefined` = unlimited (free-tier default). */
+  monthlyMessageCap?: number;
 }
 
 export interface WorkspaceGuardConfig {
@@ -40,5 +42,12 @@ export class BackendCircuitOpenError extends Error {
   constructor(public readonly backend: string) {
     super(`backend ${backend} circuit is open, refusing calls`);
     this.name = "BackendCircuitOpenError";
+  }
+}
+
+export class WorkspaceNotFoundError extends Error {
+  constructor(public readonly workspaceId: string) {
+    super(`no workspace configured with id "${workspaceId}"`);
+    this.name = "WorkspaceNotFoundError";
   }
 }
