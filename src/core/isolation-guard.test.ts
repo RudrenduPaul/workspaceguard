@@ -24,8 +24,8 @@ async function withTempDataDir<T>(fn: (dataDir: string) => Promise<T>): Promise<
   }
 }
 
-// The adversarial two-workspace cross-read suite (T3 from the an internal note):
-// distinguishable data in each workspace, assert one workspace's session can
+// The adversarial two-workspace cross-read suite: distinguishable data in
+// each workspace, assert one workspace's session can
 // never read, list, or infer the existence of another's -- chat history,
 // memory namespace, and API-key vault, each tested independently.
 
