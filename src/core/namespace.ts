@@ -4,7 +4,7 @@ import { join } from "node:path";
 /**
  * Chat history and memory get a directory boundary per workspace, not a
  * shared table/file with a workspace column -- easier to verify by
- * inspection than a query filter (an internal note decision).
+ * inspection than a query filter.
  */
 export function chatHistoryDir(dataDir: string, workspaceId: string): string {
   return join(dataDir, "workspaces", workspaceId, "chat");
