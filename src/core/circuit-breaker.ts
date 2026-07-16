@@ -6,12 +6,13 @@ const CONNECT_TIMEOUT_MS = 3000;
 const DEFAULT_OPEN_COOLDOWN_MS = 10_000;
 
 /**
- * Fail closed, never pass-through-unisolated, per the worst-failure-mode
- * concern (an internal note + an internal note). Opens after 3 consecutive failures.
- * Fixed from a an internal note: the original implementation never called
- * onHealthCheckSuccess from anywhere, so an open circuit had no path back
- * to closed -- a one-way trip switch, not a real circuit breaker. Now,
- * once OPEN_COOLDOWN_MS has passed since opening, the next call is let
+ * Fail closed, never pass-through-unisolated -- the worst failure mode
+ * here is a silent cross-workspace leak, so an unreachable backend must
+ * block, not bypass, isolation. Opens after 3 consecutive failures. The
+ * original implementation never called onHealthCheckSuccess from
+ * anywhere, so an open circuit had no path back to closed -- a one-way
+ * trip switch, not a real circuit breaker. This fixes that: once
+ * OPEN_COOLDOWN_MS has passed since opening, the next call is let
  * through as a half-open probe; success closes the circuit, failure keeps
  * it open and restarts the cooldown.
  */
