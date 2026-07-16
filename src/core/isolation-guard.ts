@@ -27,8 +27,8 @@ export interface IsolationGuardOptions {
  * Core isolation logic. Never imports a specific backend directly -- all
  * backend-specific behavior goes through the BackendAdapter interface, a
  * fixed architectural boundary. The CLI and the library export are both
- * thin wrappers around this class; there is exactly one
- * implementation of the isolation logic.
+ * thin wrappers around this class; there is exactly one implementation of
+ * the isolation logic.
  */
 export class IsolationGuard {
   private readonly dataDir: string;
