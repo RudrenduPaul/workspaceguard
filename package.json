@@ -39,7 +39,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "prepack": "npm run build",
     "test": "npm run build:test && node --test dist/**/*.test.js",
     "build:test": "tsc -p tsconfig.test.json",
     "dev": "node --experimental-strip-types src/cli/index.ts"
