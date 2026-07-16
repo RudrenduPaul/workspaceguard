@@ -8,8 +8,7 @@ const KEY_BYTES = 32;
 const IV_BYTES = 12;
 
 /**
- * One derived AES-256-GCM key per workspace, decided in the an internal note
- * session and locked by the an internal note: chat history and memory get a
+ * One derived AES-256-GCM key per workspace: chat history and memory get a
  * directory boundary, the API-key vault gets its own encrypted file per
  * workspace so a leaked file alone (without the master key) reveals
  * nothing. Uses node:crypto rather than libsodium-wrappers -- the latter's
@@ -105,12 +104,11 @@ export class Vault {
    * Rotation increments the per-workspace key generation BEFORE
    * re-encrypting, so the new ciphertext is under a genuinely different
    * derived key -- anything encrypted under the old generation can no
-   * longer be decrypted once the generation file is bumped. Fixed from a
-   * an internal note: the original implementation re-derived the same
-   * deterministic key on "rotation," which was a no-op security-wise.
-   * Behavior for an in-flight stream during rotation is still an open
-   * known limitation from the an internal note -- not resolved here, left for
-   * the an internal note.
+   * longer be decrypted once the generation file is bumped. The original
+   * implementation re-derived the same deterministic key on "rotation,"
+   * which was a no-op security-wise; this fixes that. Behavior for an
+   * in-flight stream during rotation is a known open question, not
+   * resolved here.
    */
   async rotate(dataDir: string, workspaceId: string): Promise<void> {
     const existing = await this.readSecret(dataDir, workspaceId).catch(() => undefined);
