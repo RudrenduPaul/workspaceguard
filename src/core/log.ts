@@ -7,10 +7,10 @@ export interface Logger {
 }
 
 /**
- * Minimum production logging: every
- * fail-closed decision and every circuit-breaker state change gets one
- * structured line. This is the only way the "zero cross-workspace leaks"
- * claim is verifiable outside of CI.
+ * Minimum production logging: every fail-closed decision and every
+ * circuit-breaker state change gets one structured line. This is the
+ * only way the "zero cross-workspace leaks" claim is verifiable outside
+ * of CI.
  */
 export class ConsoleLogger implements Logger {
   log(event: LogEvent): void {
