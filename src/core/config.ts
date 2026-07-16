@@ -37,12 +37,12 @@ export class DuplicateIdentityError extends Error {
 
 /**
  * add-workspace on an existing id is idempotent -- returns the existing
- * entry, never overwrites (an internal note, Section 4). Rejects loudly if the
- * identity is already claimed by a DIFFERENT workspace id -- a /review
- * finding: without this check, two workspace ids could silently share one
- * identity, and resolveWorkspaceId would deterministically route to
- * whichever was added first, merging two workspaces from the routing
- * layer's perspective without either operator being told.
+ * entry, never overwrites. Rejects loudly if the identity is already
+ * claimed by a DIFFERENT workspace id: without this check, two workspace
+ * ids could silently share one identity, and resolveWorkspaceId would
+ * deterministically route to whichever was added first, merging two
+ * workspaces from the routing layer's perspective without either
+ * operator being told.
  */
 export function upsertWorkspace(
   config: WorkspaceGuardConfig,
