@@ -25,10 +25,10 @@ export interface IsolationGuardOptions {
 
 /**
  * Core isolation logic. Never imports a specific backend directly -- all
- * backend-specific behavior goes through the BackendAdapter interface
- * (architecture rule locked in an internal note). The CLI and the library export
- * are both thin wrappers around this class; there is exactly one
- * implementation of the isolation logic.
+ * backend-specific behavior goes through the BackendAdapter interface, a
+ * fixed architectural boundary. The CLI and the library export are both
+ * thin wrappers around this class; there is exactly one implementation of
+ * the isolation logic.
  */
 export class IsolationGuard {
   private readonly dataDir: string;
@@ -111,7 +111,7 @@ export class IsolationGuard {
   /**
    * The admin-visibility surface this repo actually ships (the OSS free
    * tier) -- a hosted billing dashboard on top of this data is a separate,
-   * closed-source product per an internal note, never built in this repo.
+   * closed-source product, never built in this repo.
    */
   async usageReport(): Promise<WorkspaceUsageReport[]> {
     const ids = this.config.workspaces.map((w) => w.workspaceId);
