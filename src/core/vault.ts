@@ -104,10 +104,11 @@ export class Vault {
    * Rotation increments the per-workspace key generation BEFORE
    * re-encrypting, so the new ciphertext is under a genuinely different
    * derived key -- anything encrypted under the old generation can no
-   * longer be decrypted once the generation file is bumped. The original implementation re-derived the same
-   * deterministic key on "rotation," which was a no-op security-wise;
-   * this fixes that. Behavior for an in-flight stream during rotation is
-   * a known open question, not resolved here.
+   * longer be decrypted once the generation file is bumped. The original
+   * implementation re-derived the same deterministic key on "rotation,"
+   * which was a no-op security-wise; this fixes that. Behavior for an
+   * in-flight stream during rotation is a known open question, not
+   * resolved here.
    */
   async rotate(dataDir: string, workspaceId: string): Promise<void> {
     const existing = await this.readSecret(dataDir, workspaceId).catch(() => undefined);
