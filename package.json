@@ -1,5 +1,5 @@
 {
-  "name": "workspaceguard",
+  "name": "workspaceguard-cli",
   "version": "0.1.0",
   "description": "Per-workspace usage metering and quota caps for shared self-hosted AI assistant deployments",
   "keywords": [

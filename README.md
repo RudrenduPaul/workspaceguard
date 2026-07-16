@@ -22,14 +22,16 @@ Rather than ship a competing reimplementation of something the target platform a
 ## Install
 
 ```bash
-npm install -g workspaceguard
+npm install -g workspaceguard-cli
 ```
 
 Or run it without installing:
 
 ```bash
-npx workspaceguard --help
+npx workspaceguard-cli --help
 ```
+
+The package is `workspaceguard-cli`; the command it installs is `workspaceguard`.
 
 ## Quickstart
 
@@ -72,7 +74,7 @@ The `--json` mode is what makes this genuinely agent-native rather than just hum
 ## Library API
 
 ```ts
-import { createWorkspaceGuard, MockAdapter, QuotaExceededError } from "workspaceguard";
+import { createWorkspaceGuard, MockAdapter, QuotaExceededError } from "workspaceguard-cli";
 
 const guard = await createWorkspaceGuard({ dataDir: "./data", backend: new MockAdapter() });
 await guard.addWorkspace("alex", "alex@example.com");
