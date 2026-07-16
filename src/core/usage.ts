@@ -67,7 +67,7 @@ export function currentUsageFor(store: UsageStore, workspaceId: string): Workspa
  * per-user isolation (already native in the target repo, see README).
  * Reads/writes are not lock-guarded against concurrent processes, the same
  * accepted tradeoff config.ts already makes for `workspaceguard.config.yaml`
- * (single-sidecar-process deployment model, documented in an internal note).
+ * (single-sidecar-process deployment model).
  */
 export class UsageMeter {
   constructor(private readonly dataDir: string) {}
