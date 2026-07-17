@@ -28,17 +28,37 @@ export function usagePath(dataDir: string): string {
   return join(dataDir, ".workspaceguard", "usage.json");
 }
 
+/**
+ * Only a missing file (ENOENT -- no workspace has recorded usage yet) is a
+ * legitimate empty store. Every other failure (permission error, disk
+ * error, a corrupted/truncated JSON file) must propagate so a caller like
+ * checkQuota() fails closed instead of silently reading every workspace's
+ * usage as zero -- a swallow-everything catch here used to let any I/O
+ * hiccup or a race-corrupted usage.json lift every quota in the store.
+ */
 export async function loadUsage(dataDir: string): Promise<UsageStore> {
+  let raw: string;
   try {
-    const raw = await readFile(usagePath(dataDir), "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    raw = await readFile(usagePath(dataDir), "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return {};
     }
-    return parsed as UsageStore;
-  } catch {
-    return {};
+    throw err;
   }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(
+      `usage store at ${usagePath(dataDir)} is corrupted and could not be parsed: ${(err as Error).message}`,
+    );
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`usage store at ${usagePath(dataDir)} has an unexpected shape (expected a JSON object)`);
+  }
+  return parsed as UsageStore;
 }
 
 export async function saveUsage(dataDir: string, store: UsageStore): Promise<void> {

@@ -8,6 +8,7 @@ file-compatible with the npm package's own config file.
 from __future__ import annotations
 
 import os
+import re
 from typing import Optional
 
 import yaml
@@ -15,6 +16,39 @@ import yaml
 from .types import WorkspaceEntry, WorkspaceGuardConfig, WorkspaceNotFoundError
 
 DEFAULT_IDENTITY_HEADER = "cf-access-authenticated-user-email"
+
+# workspace_id is used to build filesystem paths (vault, namespace, chat
+# history dirs) -- an allowlist plus a reserved-name denylist closes a
+# path-traversal vector (e.g. "../../etc") before it ever reaches those
+# call sites.
+_WORKSPACE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+_RESERVED_WORKSPACE_IDS = {"__proto__", "constructor", "prototype", ".", ".."}
+
+
+class InvalidWorkspaceIdError(Exception):
+    def __init__(self, workspace_id: str) -> None:
+        super().__init__(
+            f'workspace id "{workspace_id}" is invalid: must match {_WORKSPACE_ID_PATTERN.pattern} '
+            "and must not be a reserved name"
+        )
+        self.workspace_id = workspace_id
+
+
+def _assert_valid_workspace_id(workspace_id: str) -> None:
+    if not _WORKSPACE_ID_PATTERN.match(workspace_id) or workspace_id in _RESERVED_WORKSPACE_IDS:
+        raise InvalidWorkspaceIdError(workspace_id)
+
+
+def _normalize_identity(identity: str) -> str:
+    """
+    Identities are compared case/whitespace-insensitively so that
+    "Alex@Example.com " and "alex@example.com" resolve to the same
+    workspace -- without this, the duplicate-identity guard below could be
+    evaded by registering a near-duplicate, producing two workspaces (and
+    two independent quotas) for what is really one real-world identity.
+    The original casing is still stored, only comparisons are normalized.
+    """
+    return identity.strip().lower()
 
 
 def _default_config() -> WorkspaceGuardConfig:
@@ -81,8 +115,10 @@ def upsert_workspace(config: WorkspaceGuardConfig, workspace_id: str, identity: 
     for w in config.workspaces:
         if w.workspace_id == workspace_id:
             return config
+    _assert_valid_workspace_id(workspace_id)
+    normalized = _normalize_identity(identity)
     for w in config.workspaces:
-        if w.identity == identity:
+        if _normalize_identity(w.identity) == normalized:
             raise DuplicateIdentityError(identity, w.workspace_id)
     return WorkspaceGuardConfig(
         backend=config.backend,
@@ -113,7 +149,8 @@ def set_workspace_cap(
 def resolve_workspace_id(config: WorkspaceGuardConfig, identity_header_value: Optional[str]) -> Optional[str]:
     if not identity_header_value:
         return None
+    normalized = _normalize_identity(identity_header_value)
     for w in config.workspaces:
-        if w.identity == identity_header_value:
+        if _normalize_identity(w.identity) == normalized:
             return w.workspace_id
     return None

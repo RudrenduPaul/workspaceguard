@@ -43,14 +43,28 @@ def usage_path(data_dir: str) -> str:
 
 
 def _load_usage_raw(data_dir: str) -> Dict[str, dict]:
+    """
+    Only a missing file (no workspace has recorded usage yet) is a
+    legitimate empty store. Every other failure (permission error, disk
+    error, a corrupted/truncated JSON file) must propagate so a caller like
+    check_quota() fails closed instead of silently reading every
+    workspace's usage as zero -- a catch-everything here used to let any
+    I/O hiccup or a race-corrupted usage.json lift every quota in the
+    store.
+    """
     try:
         with open(usage_path(data_dir), "r", encoding="utf-8") as fh:
-            parsed = json.load(fh)
-        if not isinstance(parsed, dict):
-            return {}
-        return parsed
-    except Exception:
+            raw = fh.read()
+    except FileNotFoundError:
         return {}
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as err:
+        raise ValueError(f"usage store at {usage_path(data_dir)} is corrupted and could not be parsed: {err}") from err
+    if not isinstance(parsed, dict):
+        raise ValueError(f"usage store at {usage_path(data_dir)} has an unexpected shape (expected a JSON object)")
+    return parsed
 
 
 def load_usage(data_dir: str) -> UsageStore:

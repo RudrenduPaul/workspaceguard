@@ -12,7 +12,7 @@ export {
   BackendCircuitOpenError,
   WorkspaceNotFoundError,
 } from "./core/types.js";
-export { DuplicateIdentityError } from "./core/config.js";
+export { DuplicateIdentityError, InvalidWorkspaceIdError } from "./core/config.js";
 export { QuotaExceededError } from "./core/usage.js";
 export type { WorkspaceUsage } from "./core/usage.js";
 

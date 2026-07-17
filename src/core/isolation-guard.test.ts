@@ -8,6 +8,7 @@ import {
   IdentityNotFoundError,
   BackendCircuitOpenError,
   DuplicateIdentityError,
+  InvalidWorkspaceIdError,
   QuotaExceededError,
   WorkspaceNotFoundError,
 } from "../index.js";
@@ -113,6 +114,73 @@ test("duplicate identity across two workspace ids is rejected, never silently me
     const statuses = await guard.status();
     assert.equal(statuses.length, 1);
     assert.equal(statuses[0]?.workspaceId, "alex");
+  });
+});
+
+test("duplicate identity is rejected across case and whitespace variants, not just byte-identical strings (regression: the merge guard used to be evadable by a near-duplicate)", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "shared@example.com");
+
+    await assert.rejects(
+      () => guard.addWorkspace("jordan", "Shared@Example.com "),
+      DuplicateIdentityError,
+    );
+
+    const statuses = await guard.status();
+    assert.equal(statuses.length, 1);
+  });
+});
+
+test("resolveWorkspace matches an identity header regardless of case or surrounding whitespace", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+
+    const response = await guard.chat(" Alex@Example.com ", "hi");
+    assert.equal(response, "echo: hi");
+  });
+});
+
+test("addWorkspace rejects a workspace id containing path-traversal characters or a reserved name (regression: workspaceId was used unsanitized as a filesystem path segment and an object key)", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+
+    await assert.rejects(
+      () => guard.addWorkspace("../../etc", "attacker@example.com"),
+      InvalidWorkspaceIdError,
+    );
+    await assert.rejects(
+      () => guard.addWorkspace("__proto__", "attacker2@example.com"),
+      InvalidWorkspaceIdError,
+    );
+
+    const statuses = await guard.status();
+    assert.equal(statuses.length, 0);
+  });
+});
+
+test("concurrent chat() calls against the same workspace never let more requests through than the cap allows (regression: quota check-then-record used to be an unlocked TOCTOU race)", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const adapter = new MockAdapter();
+    const guard = await createWorkspaceGuard({ dataDir, backend: adapter });
+    await guard.addWorkspace("alex", "alex@example.com");
+    await guard.setCap("alex", 3);
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 10 }, (_, i) => guard.chat("alex@example.com", `msg-${i}`)),
+    );
+
+    const succeeded = results.filter((r) => r.status === "fulfilled");
+    const quotaRejected = results.filter(
+      (r) => r.status === "rejected" && r.reason instanceof QuotaExceededError,
+    );
+    assert.equal(succeeded.length, 3);
+    assert.equal(quotaRejected.length, 7);
+    assert.equal(adapter._messagesFor("alex").length, 3);
   });
 });
 

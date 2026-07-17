@@ -5,7 +5,14 @@ import tempfile
 
 import pytest
 
-from workspaceguard.usage import QuotaExceededError, UsageMeter, current_usage_for, WorkspaceUsage
+from workspaceguard.usage import (
+    QuotaExceededError,
+    UsageMeter,
+    current_usage_for,
+    load_usage,
+    usage_path,
+    WorkspaceUsage,
+)
 
 
 async def test_recording_increments_per_workspace_count_and_byte_estimate():
@@ -65,6 +72,37 @@ async def test_one_workspace_hitting_cap_never_blocks_a_sibling_workspace():
         with pytest.raises(QuotaExceededError):
             await meter.check_quota("alex", 1)
         await meter.check_quota("jordan", 1)  # must not raise
+
+
+async def test_load_usage_missing_file_is_a_legitimate_empty_store():
+    with tempfile.TemporaryDirectory() as data_dir:
+        store = load_usage(data_dir)
+        assert store == {}
+
+
+async def test_load_usage_corrupted_file_raises_instead_of_silently_reading_as_empty():
+    """Regression: this used to fail open, lifting every quota."""
+    with tempfile.TemporaryDirectory() as data_dir:
+        meter = UsageMeter(data_dir)
+        await meter.record("alex", "msg-1")  # creates .workspaceguard/usage.json
+        with open(usage_path(data_dir), "w", encoding="utf-8") as fh:
+            fh.write("{ not valid json")
+
+        with pytest.raises(ValueError, match="corrupted"):
+            load_usage(data_dir)
+        with pytest.raises(ValueError, match="corrupted"):
+            await meter.check_quota("alex", 1)
+
+
+async def test_load_usage_unexpected_shape_raises_instead_of_silently_reading_as_empty():
+    with tempfile.TemporaryDirectory() as data_dir:
+        meter = UsageMeter(data_dir)
+        await meter.record("alex", "msg-1")
+        with open(usage_path(data_dir), "w", encoding="utf-8") as fh:
+            fh.write("[]")
+
+        with pytest.raises(ValueError, match="unexpected shape"):
+            load_usage(data_dir)
 
 
 def test_current_usage_for_rolls_stale_period_over_to_fresh_zeroed_bucket():
