@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "workspaceguard-cli"
+version = "0.1.0"
+description = "Per-workspace usage metering and quota caps for shared self-hosted AI assistant deployments (Odysseus and compatible backends)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+  { name = "Rudrendu Paul" },
+  { name = "Sourav Nandy" },
+]
+keywords = ["self-hosted", "ai-assistant", "usage-metering", "quota", "billing", "multi-tenant", "reverse-proxy", "odysseus", "cli", "agent-native"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = [
+  "PyYAML>=6.0,<7",
+  "cryptography>=42,<46",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0,<9",
+  "pytest-asyncio>=0.23,<1",
+  "build>=1.0,<2",
+  "twine>=5.0,<7",
+]
+
+[project.urls]
+Homepage = "https://github.com/RudrenduPaul/workspaceguard"
+Repository = "https://github.com/RudrenduPaul/workspaceguard"
+"Bug Tracker" = "https://github.com/RudrenduPaul/workspaceguard/issues"
+Changelog = "https://github.com/RudrenduPaul/workspaceguard/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/RudrenduPaul/workspaceguard/blob/main/docs/getting-started.md"
+"Author - Rudrendu Paul" = "https://github.com/RudrenduPaul"
+"Author - Sourav Nandy" = "https://github.com/Sourav-nandy-ai"
+
+[project.scripts]
+workspaceguard = "workspaceguard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/workspaceguard"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/workspaceguard",
+  "/tests",
+  "/README.md",
+  "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
