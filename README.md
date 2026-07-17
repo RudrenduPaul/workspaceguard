@@ -33,6 +33,23 @@ npx workspaceguard-cli --help
 
 The package is `workspaceguard-cli`; the command it installs is `workspaceguard`.
 
+**Current status**: this npm package is built with CI green but is **not
+yet published** to the npm registry -- blocked on a manual 2FA-gated
+publish step on the maintainer's side. `npm install -g workspaceguard-cli`
+does not work yet.
+
+### Python port
+
+A genuine, independent Python port of this same design lives in
+[`python/`](./python) -- same CLI command surface, same `--json` output
+shapes, its own async implementation (not a wrapper around this Node
+package). It's built, tested (32/32 pytest tests passing), and packaged
+for PyPI as `workspaceguard-cli`; the first publish is pending a PyPI
+account-level throttle on new project names (unrelated to 2FA -- this
+account's PyPI publishing needs no human 2FA). Check
+[pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/)
+for current live status, or see [`python/README.md`](./python/README.md).
+
 ## Quickstart
 
 ```bash
@@ -108,6 +125,18 @@ WorkspaceGuard trusts an upstream identity header (default: `Cf-Access-Authentic
 
 - Real, tested (20/20 passing): usage metering, quota enforcement, the original isolation engine (vault, namespace separation, circuit breaker), CLI with `--json` mode.
 - Not yet built: a real Odysseus HTTP adapter (only `MockAdapter` exists so far), a hosted managed billing dashboard (deliberately out of scope for this MIT repo).
+
+## Docs
+
+- [docs/getting-started.md](./docs/getting-started.md)
+- [docs/concepts.md](./docs/concepts.md)
+- [docs/integrations/ci.md](./docs/integrations/ci.md)
+- [docs/integrations/backends.md](./docs/integrations/backends.md)
+
+## Contributing and security
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md).
+Notable changes are tracked in [CHANGELOG.md](./CHANGELOG.md).
 
 ## License
 
