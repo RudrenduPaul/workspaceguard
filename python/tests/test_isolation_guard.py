@@ -23,7 +23,7 @@ from workspaceguard import (
     create_workspace_guard,
 )
 from workspaceguard.adapters.mock import MockAdapter
-from workspaceguard.config import DuplicateIdentityError
+from workspaceguard.config import DuplicateIdentityError, InvalidWorkspaceIdError
 from workspaceguard.namespace import chat_history_dir
 from workspaceguard.vault import Vault
 
@@ -101,6 +101,65 @@ async def test_duplicate_identity_across_two_workspace_ids_is_rejected():
         statuses = await guard.status()
         assert len(statuses) == 1
         assert statuses[0]["workspaceId"] == "alex"
+
+
+async def test_duplicate_identity_rejected_across_case_and_whitespace_variants():
+    """Regression: the merge guard used to be evadable by a near-duplicate."""
+    with tempfile.TemporaryDirectory() as data_dir:
+        adapter = MockAdapter()
+        guard = await create_workspace_guard(data_dir=data_dir, backend=adapter)
+        await guard.add_workspace("alex", "shared@example.com")
+
+        with pytest.raises(DuplicateIdentityError):
+            await guard.add_workspace("jordan", "Shared@Example.com ")
+
+        statuses = await guard.status()
+        assert len(statuses) == 1
+
+
+async def test_resolve_workspace_matches_identity_header_regardless_of_case_or_whitespace():
+    with tempfile.TemporaryDirectory() as data_dir:
+        adapter = MockAdapter()
+        guard = await create_workspace_guard(data_dir=data_dir, backend=adapter)
+        await guard.add_workspace("alex", "alex@example.com")
+
+        response = await guard.chat(" Alex@Example.com ", "hi")
+        assert response == "echo: hi"
+
+
+async def test_add_workspace_rejects_path_traversal_or_reserved_workspace_id():
+    """Regression: workspace_id was used unsanitized as a filesystem path segment."""
+    with tempfile.TemporaryDirectory() as data_dir:
+        adapter = MockAdapter()
+        guard = await create_workspace_guard(data_dir=data_dir, backend=adapter)
+
+        with pytest.raises(InvalidWorkspaceIdError):
+            await guard.add_workspace("../../etc", "attacker@example.com")
+        with pytest.raises(InvalidWorkspaceIdError):
+            await guard.add_workspace("__proto__", "attacker2@example.com")
+
+        statuses = await guard.status()
+        assert len(statuses) == 0
+
+
+async def test_concurrent_chat_calls_never_exceed_the_cap():
+    """Regression: quota check-then-record used to be an unlocked TOCTOU race."""
+    with tempfile.TemporaryDirectory() as data_dir:
+        adapter = MockAdapter()
+        guard = await create_workspace_guard(data_dir=data_dir, backend=adapter)
+        await guard.add_workspace("alex", "alex@example.com")
+        await guard.set_cap("alex", 3)
+
+        results = await asyncio.gather(
+            *(guard.chat("alex@example.com", f"msg-{i}") for i in range(10)),
+            return_exceptions=True,
+        )
+
+        succeeded = [r for r in results if not isinstance(r, Exception)]
+        quota_rejected = [r for r in results if isinstance(r, QuotaExceededError)]
+        assert len(succeeded) == 3
+        assert len(quota_rejected) == 7
+        assert len(adapter._messages_for("alex")) == 3
 
 
 async def test_circuit_breaker_opens_after_3_failures_then_self_heals_after_cooldown():
@@ -236,3 +295,22 @@ async def test_usage_report_percent_used_computed_null_when_uncapped():
         jordan = next(r for r in report if r.workspace_id == "jordan")
         assert alex.percent_used == 25
         assert jordan.percent_used is None
+
+
+async def test_usage_report_percent_used_rounds_half_up_to_match_the_npm_clis_json_output():
+    """
+    Regression: Python's builtin round() uses banker's rounding
+    (round-half-to-even) while the TS original's Math.round() rounds
+    half-up, so 1/8 (12.5%) diverged between the two --json outputs
+    (12 vs 13) despite both READMEs documenting the outputs as identical.
+    """
+    with tempfile.TemporaryDirectory() as data_dir:
+        adapter = MockAdapter()
+        guard = await create_workspace_guard(data_dir=data_dir, backend=adapter)
+        await guard.add_workspace("alex", "alex@example.com")
+        await guard.set_cap("alex", 8)
+        await guard.chat("alex@example.com", "one")
+
+        report = await guard.usage_report()
+        alex = next(r for r in report if r.workspace_id == "alex")
+        assert alex.percent_used == 13

@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import Optional
 
 from .adapters.mock import MockAdapter
-from .config import DuplicateIdentityError
+from .config import DuplicateIdentityError, InvalidWorkspaceIdError
 from .isolation_guard import IsolationGuard, WorkspaceUsageReport
 from .types import (
     BackendAdapter,
@@ -34,7 +34,7 @@ from .types import (
 )
 from .usage import QuotaExceededError, WorkspaceUsage
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 async def create_workspace_guard(
@@ -71,6 +71,7 @@ __all__ = [
     "BackendCircuitOpenError",
     "WorkspaceNotFoundError",
     "DuplicateIdentityError",
+    "InvalidWorkspaceIdError",
     "QuotaExceededError",
     "WorkspaceUsage",
     "__version__",

@@ -7,6 +7,7 @@ import { Vault } from "./vault.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { ConsoleLogger, type Logger } from "./log.js";
 import { UsageMeter, type WorkspaceUsage } from "./usage.js";
+import { withLock } from "./lock.js";
 
 export interface WorkspaceUsageReport extends WorkspaceUsage {
   workspaceId: string;
@@ -89,13 +90,24 @@ export class IsolationGuard {
     return workspaceId;
   }
 
+  /**
+   * The quota check, backend call, and usage record are wrapped in a
+   * single per-workspace lock so two concurrent chat() calls for the same
+   * workspace can never both pass the same pre-cap quota check (regression:
+   * previously unlocked, letting N concurrent requests at cap-1 all read
+   * the same count and all proceed, and letting concurrent record() calls
+   * lose updates to each other). Different workspaces never contend with
+   * each other -- the lock key is workspace-scoped.
+   */
   async chat(identityHeaderValue: string | undefined, message: string): Promise<string> {
     const workspaceId = this.resolveWorkspace(identityHeaderValue);
     const entry = this.config.workspaces.find((w) => w.workspaceId === workspaceId);
-    await this.usage.checkQuota(workspaceId, entry?.monthlyMessageCap);
-    const response = await this.circuit.call(() => this.backend.forwardChat(workspaceId, message));
-    await this.usage.record(workspaceId, message);
-    return response;
+    return withLock(`usage:${workspaceId}`, async () => {
+      await this.usage.checkQuota(workspaceId, entry?.monthlyMessageCap);
+      const response = await this.circuit.call(() => this.backend.forwardChat(workspaceId, message));
+      await this.usage.record(workspaceId, message);
+      return response;
+    });
   }
 
   async status(): Promise<{ workspaceId: string; identity: string }[]> {

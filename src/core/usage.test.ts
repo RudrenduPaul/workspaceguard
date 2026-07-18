@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { UsageMeter, QuotaExceededError, currentUsageFor } from "./usage.js";
+import { UsageMeter, QuotaExceededError, currentUsageFor, loadUsage, usagePath } from "./usage.js";
 
 async function withTempDataDir<T>(fn: (dataDir: string) => Promise<T>): Promise<T> {
   const dir = await mkdtemp(join(tmpdir(), "workspaceguard-usage-test-"));
@@ -73,6 +73,34 @@ test("quota: one workspace hitting its cap never blocks a sibling workspace", as
     await meter.record("alex", "msg-1");
     await assert.rejects(() => meter.checkQuota("alex", 1), QuotaExceededError);
     await assert.doesNotReject(() => meter.checkQuota("jordan", 1));
+  });
+});
+
+test("loadUsage: a missing usage.json is a legitimate empty store", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const store = await loadUsage(dataDir);
+    assert.deepEqual(store, {});
+  });
+});
+
+test("loadUsage: a corrupted usage.json throws instead of silently reading as empty (regression: this used to fail open, lifting every quota)", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const meter = new UsageMeter(dataDir);
+    await meter.record("alex", "msg-1"); // creates .workspaceguard/ and usage.json
+    await writeFile(usagePath(dataDir), "{ not valid json", "utf8");
+
+    await assert.rejects(() => loadUsage(dataDir), /corrupted/);
+    await assert.rejects(() => meter.checkQuota("alex", 1), /corrupted/);
+  });
+});
+
+test("loadUsage: a usage.json holding a JSON array (unexpected shape) throws instead of silently reading as empty", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const meter = new UsageMeter(dataDir);
+    await meter.record("alex", "msg-1");
+    await writeFile(usagePath(dataDir), "[]", "utf8");
+
+    await assert.rejects(() => loadUsage(dataDir), /unexpected shape/);
   });
 });
 

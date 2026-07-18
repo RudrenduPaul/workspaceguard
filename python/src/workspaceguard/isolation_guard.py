@@ -7,9 +7,12 @@ there is exactly one implementation of the isolation/metering logic.
 """
 from __future__ import annotations
 
+import asyncio
+import math
 import os
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import DefaultDict, List, Optional
 
 from .circuit_breaker import CircuitBreaker
 from .config import load_config, resolve_workspace_id, save_config, set_workspace_cap, upsert_workspace
@@ -47,6 +50,11 @@ class IsolationGuard:
         self._circuit = CircuitBreaker(backend.name, self._logger, **kwargs)
         self._usage = UsageMeter(self._data_dir)
         self._config = WorkspaceGuardConfig(backend="odysseus", identity_header="", workspaces=[])
+        # Per-workspace lock so a concurrent quota check-then-record can't
+        # race across two calls to chat() for the same workspace (in-process
+        # only, matching this project's documented single-sidecar-process
+        # deployment model -- see usage.py).
+        self._workspace_locks: DefaultDict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     @property
     def _config_path(self) -> str:
@@ -86,17 +94,28 @@ class IsolationGuard:
         return workspace_id
 
     async def chat(self, identity_header_value: Optional[str], message: str) -> str:
+        """
+        The quota check, backend call, and usage record are wrapped in a
+        single per-workspace lock so two concurrent chat() calls for the
+        same workspace can never both pass the same pre-cap quota check
+        (regression: previously unlocked, letting N concurrent requests at
+        cap-1 all read the same count and all proceed, and letting
+        concurrent record() calls lose updates to each other). Different
+        workspaces never contend with each other.
+        """
         workspace_id = self.resolve_workspace(identity_header_value)
         entry = next((w for w in self._config.workspaces if w.workspace_id == workspace_id), None)
         cap = entry.monthly_message_cap if entry is not None else None
-        await self._usage.check_quota(workspace_id, cap)
 
-        async def _call() -> str:
-            return await self._backend.forward_chat(workspace_id, message)
+        async with self._workspace_locks[workspace_id]:
+            await self._usage.check_quota(workspace_id, cap)
 
-        response = await self._circuit.call(_call)
-        await self._usage.record(workspace_id, message)
-        return response
+            async def _call() -> str:
+                return await self._backend.forward_chat(workspace_id, message)
+
+            response = await self._circuit.call(_call)
+            await self._usage.record(workspace_id, message)
+            return response
 
     async def status(self) -> List[dict]:
         return [{"workspaceId": w.workspace_id, "identity": w.identity} for w in self._config.workspaces]
@@ -118,7 +137,13 @@ class IsolationGuard:
             usage = usage_by_id.get(w.workspace_id) or WorkspaceUsage(period="", message_count=0, estimated_bytes=0)
             percent_used: Optional[int] = None
             if w.monthly_message_cap is not None and w.monthly_message_cap > 0:
-                percent_used = round((usage.message_count / w.monthly_message_cap) * 100)
+                # math.floor(x + 0.5), not the builtin round(): Python's
+                # round() uses banker's rounding (round-half-to-even) while
+                # the TS original's Math.round() rounds half-up -- this
+                # kept percentUsed diverging between the two --json outputs
+                # for exact-half cases (e.g. 12.5% -> 12 vs 13) despite both
+                # READMEs documenting the outputs as identical.
+                percent_used = math.floor((usage.message_count / w.monthly_message_cap) * 100 + 0.5)
             reports.append(
                 WorkspaceUsageReport(
                     workspace_id=w.workspace_id,
