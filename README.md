@@ -10,6 +10,8 @@ npx workspaceguard usage
 -> jordan [jordan@example.com]: 203 messages this period, cap unlimited
 ```
 
+![Installing workspaceguard-cli from npm and running init, add-workspace, set-cap, and usage for the first time in a terminal](./docs/demo.gif)
+
 ## Why this exists, and why it isn't what it used to be
 
 This project originally set out to add per-user workspace isolation (separate chat history, memory, API keys) to a self-hosted AI chat platform. A feasibility spike found that premise was false for the target platform's current default configuration: per-user ownership on chat history, memory, and API tokens is already enforced by default, and its own setup docs walk through the shared-household deployment this project targeted.
@@ -66,6 +68,8 @@ workspaceguard usage
 ```
 
 Every chat request that flows through the sidecar's `chat()` entry point resolves a workspace from the trusted identity header, checks that workspace's cap (if any), forwards to the backend, then records the usage -- one choke point, not scattered checks.
+
+![Running workspaceguard status --json, rotate-key, and usage --json to show structured output and vault key rotation](./docs/usage.gif)
 
 ## CLI reference
 
@@ -132,6 +136,39 @@ WorkspaceGuard trusts an upstream identity header (default: `Cf-Access-Authentic
 - [docs/concepts.md](./docs/concepts.md)
 - [docs/integrations/ci.md](./docs/integrations/ci.md)
 - [docs/integrations/backends.md](./docs/integrations/backends.md)
+
+## FAQ
+
+**Q: What does WorkspaceGuard actually do?**
+A: It adds per-workspace usage metering and quota enforcement in front of one shared self-hosted AI assistant deployment. Concretely: it counts messages per workspace per month, lets you set an optional cap that fails closed once hit, and gives you (or an agent) a `workspaceguard usage` report. It does not add chat history, memory, or API key isolation itself -- that already exists by default in the target platform (see "Why this exists" above), and WorkspaceGuard's own isolation code (`src/core/vault.ts`, `src/core/namespace.ts`) is kept only as the identity-resolution substrate the metering layer reads from.
+
+**Q: What's WorkspaceGuard's actual differentiator?**
+A: Narrow scope done well, not a full billing platform and not a reimplementation of isolation the backend already has. Every request flows through one choke point (`chat()` in `src/core/isolation-guard.ts`: resolve workspace, check quota, call backend, record usage), quota enforcement fails closed (a corrupted or unreadable usage store blocks requests instead of silently resetting everyone's usage to zero, fixed in 0.1.1 per [CHANGELOG.md](./CHANGELOG.md)), and every command supports `--json` for agent-native output.
+
+**Q: How does WorkspaceGuard compare to Odysseus?**
+A: It's not a competing product. WorkspaceGuard is a sidecar that sits in front of an Odysseus deployment (or a compatible backend); it doesn't replace anything Odysseus already does.
+
+| Capability | WorkspaceGuard | Odysseus (native) |
+|---|---|---|
+| Per-user isolation (chat history, memory, API keys) | Not reimplemented; treated as already solved | Yes, built in by default |
+| Per-workspace message counting | Yes | No |
+| Monthly quota caps, fail-closed | Yes | No |
+| CLI / `--json` usage report | Yes | No |
+
+**Q: What platforms does WorkspaceGuard run on?**
+A: The npm package (`workspaceguard-cli`) requires Node.js 20 or newer (`engines.node` in `package.json`). The Python port in [`python/`](./python) requires Python 3.9 through 3.13 (see the classifiers in `python/pyproject.toml`). Neither distribution ships a platform-specific binary, so both run wherever their respective runtime does (Linux, macOS, Windows).
+
+**Q: Is WorkspaceGuard a CLI, a library, or both?**
+A: Both, in both distributions. The CLI (`workspaceguard <command>`) covers `init`, `add-workspace`, `status`, `usage`, `set-cap`, `rotate-key`, and `scan`. The same functionality is also importable directly (`createWorkspaceGuard` from the TypeScript package, `create_workspace_guard` from the Python package) for anything that wants to call it from code instead of shelling out.
+
+**Q: What's a real current limitation I should know about before relying on this?**
+A: The only backend adapter implemented today is `MockAdapter`, an in-memory adapter used for tests and local experimentation. A real Odysseus HTTP adapter has not been built yet (see [docs/integrations/backends.md](./docs/integrations/backends.md)), so WorkspaceGuard does not yet forward live chat traffic to an actual Odysseus deployment. The metering and quota logic itself is real and tested; the network bridge to a live backend is the piece still outstanding.
+
+**Q: Does WorkspaceGuard need its own API keys, or hold any of my AI provider credentials?**
+A: No. The only backend adapter that exists right now (`MockAdapter`) is in-memory and calls no external API. All backend-specific behavior is isolated behind the `BackendAdapter` interface (`src/adapters/`), so WorkspaceGuard's own code never needs to see provider credentials directly.
+
+**Q: Is WorkspaceGuard free to use commercially?**
+A: Yes. This repository is MIT licensed in full, no dual-licensing and no feature gate. The mention above of a hosted, multi-tenant billing dashboard is a separate, closed-source product described only as a roadmap item; no billing-dashboard code lives in, or is withheld from, this MIT codebase.
 
 ## Contributing and security
 
