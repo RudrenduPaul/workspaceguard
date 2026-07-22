@@ -1,6 +1,26 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { createWorkspaceGuard } from "../index.js";
 import { MockAdapter } from "../adapters/mock.js";
+
+const require = createRequire(import.meta.url);
+const { version: PACKAGE_VERSION } = require("../../package.json") as { version: string };
+
+const HELP_TEXT = `usage: workspaceguard <command> [args] [--json]
+
+commands:
+  init                              initialize workspaceguard in the current (or configured) data directory
+  add-workspace <id> --identity <v> register a new workspace with its identity
+  status                            list configured workspaces and their isolation status
+  rotate-key <id>                   rotate the API key for a workspace
+  usage                             print per-workspace message-usage counts and caps
+  set-cap <id> <count|none>         set (or clear) a workspace's monthly message cap
+  scan                              scan isolation config for misconfigurations
+
+global options:
+  --json          output structured JSON instead of human-readable text
+  -h, --help      show this help message and exit
+  -V, --version   show the installed version and exit`;
 
 const STARTUP_WARNING =
   "WARNING: workspaceguard must never be directly reachable from the network.\n" +
@@ -32,6 +52,16 @@ async function main(): Promise<void> {
   const dataDir = process.env.WORKSPACEGUARD_DATA_DIR ?? process.cwd();
 
   switch (command) {
+    case "--help":
+    case "-h": {
+      console.log(HELP_TEXT);
+      return;
+    }
+    case "--version":
+    case "-V": {
+      console.log(PACKAGE_VERSION);
+      return;
+    }
     case "init": {
       if (!json) console.log(STARTUP_WARNING);
       const guard = await createWorkspaceGuard({ dataDir, backend: new MockAdapter() });
