@@ -86,6 +86,8 @@ to the npm CLI.
 | `workspaceguard set-cap <id> <count\|none>` | Sets or clears a workspace's monthly message cap. |
 | `workspaceguard rotate-key <id>` | Rotates a workspace's vault encryption key (invalidates the old ciphertext). |
 | `workspaceguard scan [--json]` | Isolation config scan (scaffold stub, carried over from the original build). |
+| `workspaceguard -h`, `--help` | Prints the command list above and exits. |
+| `workspaceguard -V`, `--version` | Prints the installed package version and exits. |
 
 ## Library API
 

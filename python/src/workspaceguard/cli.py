@@ -15,10 +15,35 @@ import asyncio
 import os
 import sys
 from dataclasses import asdict
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from typing import Any, List, Optional, Tuple
 
 from . import create_workspace_guard
 from .adapters.mock import MockAdapter
+
+
+def _package_version() -> str:
+    try:
+        return _pkg_version("workspaceguard-cli")
+    except PackageNotFoundError:
+        return "0.0.0-dev"
+
+
+HELP_TEXT = """usage: workspaceguard <command> [args] [--json]
+
+commands:
+  init                              initialize workspaceguard in the current (or configured) data directory
+  add-workspace <id> --identity <v> register a new workspace with its identity
+  status                            list configured workspaces and their isolation status
+  rotate-key <id>                   rotate the API key for a workspace
+  usage                             print per-workspace message-usage counts and caps
+  set-cap <id> <count|none>         set (or clear) a workspace's monthly message cap
+  scan                              scan isolation config for misconfigurations
+
+global options:
+  --json          output structured JSON instead of human-readable text
+  -h, --help      show this help message and exit
+  -V, --version   show the installed version and exit"""
 
 STARTUP_WARNING = (
     "WARNING: workspaceguard must never be directly reachable from the network.\n"
@@ -65,6 +90,14 @@ async def _run(argv: List[str]) -> int:
     raw_args = argv[2:]
     json_mode, args = _extract_json_flag(raw_args)
     data_dir = os.environ.get("WORKSPACEGUARD_DATA_DIR") or os.getcwd()
+
+    if command in ("--help", "-h"):
+        print(HELP_TEXT)
+        return 0
+
+    if command in ("--version", "-V"):
+        print(_package_version())
+        return 0
 
     if command == "init":
         if not json_mode:
