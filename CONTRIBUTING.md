@@ -1,11 +1,11 @@
 # Contributing to WorkspaceGuard
 
 WorkspaceGuard ships two distributions of the same design: an npm package
-(`workspaceguard-cli`, TypeScript, repo root -- built and CI-green, **not
-yet published to npm**, blocked on a manual 2FA-gated publish step) and a
-PyPI package (`workspaceguard-cli`, Python, `python/`, published and
-installable today). Please read this whole file before opening a PR --
-which section applies depends on which codebase you're touching.
+(`workspaceguard-cli`, TypeScript, repo root -- built, CI-green, and
+published and installable today) and a PyPI package (`workspaceguard-cli`,
+Python, `python/`, also published and installable today). Please read this
+whole file before opening a PR -- which section applies depends on which
+codebase you're touching.
 
 ## Ground rules
 

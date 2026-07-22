@@ -30,27 +30,25 @@ npm install -g workspaceguard-cli
 Or run it without installing:
 
 ```bash
-npx workspaceguard-cli --help
+npx workspaceguard-cli usage
 ```
 
 The package is `workspaceguard-cli`; the command it installs is `workspaceguard`.
 
-**Current status**: this npm package is built with CI green but is **not
-yet published** to the npm registry -- blocked on a manual 2FA-gated
-publish step on the maintainer's side. `npm install -g workspaceguard-cli`
-does not work yet.
+**Current status**: this npm package is live on the npm registry.
+`npm install -g workspaceguard-cli` works today -- see
+[npmjs.com/package/workspaceguard-cli](https://www.npmjs.com/package/workspaceguard-cli).
 
 ### Python port
 
 A genuine, independent Python port of this same design lives in
 [`python/`](./python) -- same CLI command surface, same `--json` output
 shapes, its own async implementation (not a wrapper around this Node
-package). It's built, tested (32/32 pytest tests passing), and packaged
-for PyPI as `workspaceguard-cli`; the first publish is pending a PyPI
-account-level throttle on new project names (unrelated to 2FA -- this
-account's PyPI publishing needs no human 2FA). Check
+package). It's built, tested (32/32 pytest tests passing), and published
+to PyPI as `workspaceguard-cli`; `pip install workspaceguard-cli` works
+today -- see
 [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/)
-for current live status, or see [`python/README.md`](./python/README.md).
+or [`python/README.md`](./python/README.md).
 
 ## Quickstart
 
@@ -78,7 +76,7 @@ Every command accepts `--json` for a structured, agent-native output shape inste
 | Command | What it does |
 |---|---|
 | `workspaceguard init` | Initializes the data directory and vault for this deployment. |
-| `workspaceguard add-workspace <id> --identity <value>` | Registers a workspace, idempotent on repeat calls for the same id. |
+| `workspaceguard add-workspace <id> --identity <value>` | Registers a workspace, idempotent on repeat calls for the same id. Note: `--identity` is parsed positionally and must immediately follow `<id>` -- it is not a free-standing flag. |
 | `workspaceguard status [--json]` | Lists configured workspaces. |
 | `workspaceguard usage [--json]` | Per-workspace message count, cap, and percent-used for the current month. |
 | `workspaceguard set-cap <id> <count\|none>` | Sets or clears a workspace's monthly message cap. |

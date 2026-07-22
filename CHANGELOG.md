@@ -22,20 +22,20 @@ Also: fixed a rounding-parity bug where Python's `round()` (round-half-to-even) 
 Initial Python port, built, tested, and packaged for PyPI as
 `workspaceguard-cli`.
 
-**Package status at this release**: the wheel and sdist are built and
+**Package status at this release**: the wheel and sdist were built and
 verified (installs and runs correctly end to end in a fresh venv,
-`twine check` passes), but the first PyPI publish is pending -- blocked by
-a PyPI account-level throttle on registering brand-new project names
-("429 Too many new projects created"), unrelated to 2FA (this account's
-PyPI publishing needs no human 2FA). Separately, the npm package is built
-with CI green but is also **not yet published** to the npm registry --
-blocked on a manual 2FA-gated publish step on the maintainer's side.
-Neither `pip install workspaceguard-cli` nor `npm install -g
-workspaceguard-cli` is live as of this entry; check
+`twine check` passes), but the first PyPI publish was pending -- initially
+blocked by a PyPI account-level throttle on registering brand-new project
+names ("429 Too many new projects created"), unrelated to 2FA (this
+account's PyPI publishing needs no human 2FA). Separately, the npm package
+was built with CI green but not yet published to the npm registry either.
+**Update**: both throttles have since cleared. `pip install
+workspaceguard-cli` and `npm install -g workspaceguard-cli` both work
+today; see
 [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/)
-for current status. Once both unblock, the two distributions are intended
-to be maintained together as equally first-class packages, same as this
-account's other dual-distribution projects.
+and [npmjs.com/package/workspaceguard-cli](https://www.npmjs.com/package/workspaceguard-cli).
+The two distributions are maintained together as equally first-class
+packages, same as this account's other dual-distribution projects.
 
 ### Added
 

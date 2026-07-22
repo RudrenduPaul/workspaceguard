@@ -40,20 +40,15 @@ pip install workspaceguard-cli
 ```
 
 **Current status**: this Python port is fully built, tested (32/32 pytest
-tests passing), and packaged -- the wheel and sdist are built and verified,
-installing and running correctly end to end in a fresh virtual environment.
-The first PyPI publish is pending: PyPI's own account-level throttle on
-registering brand-new project names ("429 Too many new projects created")
-is currently blocking the upload, unrelated to any 2FA requirement (this
-account's PyPI publishing needs no human 2FA). It will publish as soon as
-that throttle window clears. Separately, the npm package (`workspaceguard-cli`)
-is built with CI green but not yet published to the npm registry either
-(blocked on a manual 2FA-gated publish step). Neither `pip install
-workspaceguard-cli` nor `npm install -g workspaceguard-cli` is live yet as
-of this writing -- check [PyPI](https://pypi.org/project/workspaceguard-cli/)
-for current availability. This package is a genuine, independent port --
-not a wrapper around the npm package -- so it will work regardless of npm's
-status once it publishes.
+tests passing), and published to PyPI. `pip install workspaceguard-cli`
+works today -- see
+[pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/).
+The npm package (`workspaceguard-cli`) is also published and installable
+today via `npm install -g workspaceguard-cli` -- see
+[npmjs.com/package/workspaceguard-cli](https://www.npmjs.com/package/workspaceguard-cli).
+This package is a genuine, independent port -- not a wrapper around the
+npm package -- so it works and is maintained regardless of the npm
+package's status.
 
 ## Quickstart
 

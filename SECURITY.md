@@ -11,8 +11,8 @@ priority.
 
 | Package | Version | Supported |
 | --- | --- | --- |
-| `workspaceguard-cli` (npm) | -- | Not yet published (built, CI green, blocked on a manual 2FA-gated publish step). No published version to support yet. |
-| `workspaceguard-cli` (PyPI) | -- | Not yet published (built, tested, packaged; the first publish is pending a PyPI new-project throttle, unrelated to 2FA). No published version to support yet -- check [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/) for current status. |
+| `workspaceguard-cli` (npm) | latest (0.1.x) | Published and installable via `npm install -g workspaceguard-cli`. See [npmjs.com/package/workspaceguard-cli](https://www.npmjs.com/package/workspaceguard-cli). |
+| `workspaceguard-cli` (PyPI) | latest (0.1.x) | Published and installable via `pip install workspaceguard-cli`. See [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/). |
 
 Both distributions are pre-1.0 and under active development. Security
 fixes land on the latest `0.1.x` release of each; there is no older
