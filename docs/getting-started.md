@@ -5,25 +5,20 @@ shared self-hosted AI assistant deployment (Odysseus and compatible
 backends): per-workspace message counts, optional monthly caps that fail
 closed, and a CLI report an admin (or another agent) can read. It ships as
 two packages built from the same design: an npm package (`workspaceguard-cli`,
-TypeScript, repo root -- built, CI green, not yet published to npm, see
+TypeScript, repo root -- built, CI green, and published, see
 "Package status" below) and a PyPI package (`workspaceguard-cli`, Python,
-`python/`, a genuine independent port).
+`python/`, a genuine independent port, also published).
 
 ## Package status
 
 | Distribution | Status |
 | --- | --- |
-| npm (`workspaceguard-cli`) | Built, tested, CI green. Not yet published -- blocked on a manual 2FA-gated publish step on the maintainer's side. `npm install -g workspaceguard-cli` does not work yet. |
-| PyPI (`workspaceguard-cli`) | Built, tested, packaged, and publish-gated. The first publish is currently pending a PyPI account-level throttle on new project names, unrelated to 2FA. Check [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/) for current live status; `pip install workspaceguard-cli` will work once it publishes. |
+| npm (`workspaceguard-cli`) | Built, tested, CI green, and published. `npm install -g workspaceguard-cli` works today. |
+| PyPI (`workspaceguard-cli`) | Built, tested, packaged, and published. `pip install workspaceguard-cli` works today -- see [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/) for current live status. |
 
-This page uses the Python CLI for every runnable example below. Until
-either distribution is actually live, clone the repo and run the CLI from
-source (see [CONTRIBUTING.md](../CONTRIBUTING.md#working-on-the-python-package-python)
-for the editable-install steps) -- the commands, flags, and output shapes
-shown below are exactly what you'll get once `pip install workspaceguard-cli`
-is live.
+This page uses the Python CLI for every runnable example below.
 
-## Install (once published)
+## Install
 
 ```bash
 pip install workspaceguard-cli
