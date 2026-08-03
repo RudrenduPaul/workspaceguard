@@ -63,8 +63,10 @@ for this repository. Include:
   dashboard -- these are documented as not-yet-built (see
   `docs/integrations/backends.md` and the README), not silent gaps to
   discover.
-- The npm package's current unpublished status -- not a security issue,
-  see [CHANGELOG.md](./CHANGELOG.md).
+- A CLI flag/output regression on an already-published `0.1.x` release
+  (e.g. `--help`/`--version` behavior) -- not a security issue, see
+  [CHANGELOG.md](./CHANGELOG.md) for the current known-issues/fix status
+  of the currently published packages.
 
 ## Current security posture, stated honestly
 

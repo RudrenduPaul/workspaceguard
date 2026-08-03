@@ -44,7 +44,7 @@ The package is `workspaceguard-cli`; the command it installs is `workspaceguard`
 A genuine, independent Python port of this same design lives in
 [`python/`](./python) -- same CLI command surface, same `--json` output
 shapes, its own async implementation (not a wrapper around this Node
-package). It's built, tested (32/32 pytest tests passing), and published
+package). It's built, tested (40/40 pytest tests passing), and published
 to PyPI as `workspaceguard-cli`; `pip install workspaceguard-cli` works
 today -- see
 [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/)
@@ -84,6 +84,14 @@ Every command accepts `--json` for a structured, agent-native output shape inste
 | `workspaceguard scan [--json]` | Isolation config scan (scaffold stub, carried over from the original build). |
 | `workspaceguard -h`, `--help` | Prints the command list above and exits. |
 | `workspaceguard -V`, `--version` | Prints the installed package version and exits. |
+
+**Known issue on the currently published `0.1.2` release**: the `-h`/`--help`
+and `-V`/`--version` rows above describe the fixed, not-yet-published
+behavior. `workspaceguard-cli@0.1.2` (the version live on npm today) does
+not implement those two flags; running either one falls through to the
+default unknown-command path and exits with status `1`. Every other
+command in this table works as documented on `0.1.2`. See
+[CHANGELOG.md](./CHANGELOG.md) for the fix and its publish status.
 
 ```bash
 $ workspaceguard usage --json
@@ -127,7 +135,7 @@ WorkspaceGuard trusts an upstream identity header (default: `Cf-Access-Authentic
 
 ## What's real vs. not yet built
 
-- Real, tested (20/20 passing): usage metering, quota enforcement, the original isolation engine (vault, namespace separation, circuit breaker), CLI with `--json` mode.
+- Real, tested (27/27 passing): usage metering, quota enforcement, the original isolation engine (vault, namespace separation, circuit breaker), CLI with `--json` mode.
 - Not yet built: a real Odysseus HTTP adapter (only `MockAdapter` exists so far), a hosted managed billing dashboard (deliberately out of scope for this MIT repo).
 
 ## Docs

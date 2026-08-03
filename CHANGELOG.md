@@ -6,6 +6,47 @@ repo root) and the PyPI package (`workspaceguard-cli`, Python, `python/`)
 -- since they implement the same design; entries note which distribution
 they apply to.
 
+## [0.1.3 / Python 0.1.3] - Pending publish -- CLI fix, metadata, doc corrections
+
+**Known issue on the currently published `0.1.2` release of both
+distributions**: `workspaceguard -h` / `--help` and `workspaceguard -V` /
+`--version` do not match the CLI reference table in either README --
+running either flag falls through to the default unknown-command branch,
+which prints a bare one-line usage string and exits with status `1`
+instead of printing the documented help/version text and exiting `0`.
+This is fixed in this version, but **as of this entry the fix has not yet
+been published** to either registry -- `npm install -g workspaceguard-cli`
+and `pip install workspaceguard-cli` will keep installing the affected
+`0.1.2` build until a new release goes out. Track publish status via
+[npmjs.com/package/workspaceguard-cli](https://www.npmjs.com/package/workspaceguard-cli)
+and [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/).
+
+- **Fixed**: `-h`/`--help` and `-V`/`--version` now print the documented
+  help text / installed version and exit `0`, in both `src/cli/index.ts`
+  and `python/src/workspaceguard/cli.py`.
+- **Fixed**: the npm `package.json` was missing its `author`/`contributors`
+  fields on the published `0.1.2` release even though both maintainers were
+  already listed as npm package maintainers; both fields are now present so
+  the manifest itself (not just npm's separate maintainers list) credits
+  both authors.
+- **Fixed**: corrected stale/self-contradictory test-count claims across
+  the docs. The TypeScript suite (`src/core/usage.test.ts` +
+  `src/core/isolation-guard.test.ts`) has 27 tests, not the previously
+  claimed 20. The Python suite (`python/tests/test_cli.py` +
+  `test_isolation_guard.py` + `test_usage.py`) has 40 tests, not the
+  previously claimed 32 (root README and `python/README.md`'s Install
+  section) or 28 (`python/README.md`'s own "What's real vs. not yet built"
+  section, which disagreed with its own Install section above it).
+- **Fixed**: removed a stale `SECURITY.md` line stating the npm package's
+  "current unpublished status" was out of scope -- the npm package has been
+  published and installable since before the `0.1.1` release; that line
+  was leftover from an earlier pre-publish draft and contradicted the
+  Supported Versions table two sections above it in the same file.
+- `python/pyproject.toml`'s `version` field is bumped to `0.1.3` to match
+  the npm side's already-bumped (but likewise unpublished) `0.1.3` and to
+  stop it silently understating that the published `0.1.2` PyPI release
+  predates this fix.
+
 ## [0.1.1 / Python 0.1.1] - Security fixes
 
 Four fixes from a security review of the core isolation/metering engine, all applied to both distributions:
