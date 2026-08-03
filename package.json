@@ -43,7 +43,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "build": "rm -rf dist && tsc -p tsconfig.json && chmod +x dist/cli/index.js",
     "prepack": "npm run build",
     "test": "npm run build:test && node --test dist/**/*.test.js",
     "build:test": "tsc -p tsconfig.test.json",
