@@ -21,15 +21,14 @@ an admin (or another agent) can read.
 
 This project originally set out to add per-user workspace isolation
 (separate chat history, memory, API keys) to a self-hosted AI chat
-platform. A feasibility spike found that premise was false for the target
-platform's current default configuration: per-user ownership on chat
-history, memory, and API tokens is already enforced by default. Rather
-than ship a competing reimplementation of something the target platform
-already does correctly, this project keeps its tested isolation engine
-(namespace separation, an AES-256-GCM vault with real key rotation,
-fail-closed identity resolution, a self-healing circuit breaker) as the
-identity-resolution substrate, and builds the layer that platform
-genuinely does not have: usage metering and quota enforcement per
+platform. A feasibility spike found that Odysseus already enforces
+per-user ownership on chat history, memory, and API tokens by default,
+so building a competing isolation layer would have duplicated work
+Odysseus already does correctly. This project instead keeps its tested
+isolation engine (namespace separation, an AES-256-GCM vault with real
+key rotation, fail-closed identity resolution, a self-healing circuit
+breaker) as the identity-resolution substrate, and builds the layer
+Odysseus does not provide: usage metering and quota enforcement per
 workspace. See the [project README](https://github.com/RudrenduPaul/workspaceguard#readme)
 for the full story.
 

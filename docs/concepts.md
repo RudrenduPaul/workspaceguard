@@ -35,15 +35,13 @@ complete are counted.
 
 This project originally set out to add per-user workspace isolation
 (separate chat history, memory, API keys) to a self-hosted AI chat
-platform. A feasibility spike found that premise was false for the target
-platform's current default configuration: per-user ownership on chat
-history, memory, and API tokens is already enforced by default, and its
-own setup docs walk through the shared-household deployment this project
-targeted. Rather than ship a competing reimplementation of something the
-target platform already does correctly, this project kept its tested
+platform. A feasibility spike found that Odysseus already enforces
+per-user ownership on chat history, memory, and API tokens by default,
+so building a competing isolation layer would have duplicated work
+Odysseus already does correctly. This project instead kept its tested
 isolation engine as the identity-resolution substrate and built the layer
-that platform genuinely does not have: usage metering and quota
-enforcement per workspace.
+Odysseus does not provide: usage metering and quota enforcement per
+workspace.
 
 ## The isolation engine (kept, not the new work)
 
