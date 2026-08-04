@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "workspaceguard-cli"
-version = "0.1.3"
-description = "Per-workspace usage metering and quota caps for shared self-hosted AI assistant deployments (Odysseus and compatible backends)."
+version = "0.1.4"
+description = "Per-workspace usage metering and fail-closed quota caps for shared self-hosted AI assistant deployments (Odysseus and compatible backends). Genuine independent Python port with the same CLI and --json shapes as the npm package."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
@@ -13,7 +13,7 @@ authors = [
   { name = "Rudrendu Paul" },
   { name = "Sourav Nandy" },
 ]
-keywords = ["self-hosted", "ai-assistant", "usage-metering", "quota", "billing", "multi-tenant", "reverse-proxy", "odysseus", "cli", "agent-native"]
+keywords = ["self-hosted", "ai-assistant", "usage-metering", "quota", "fail-closed", "multi-tenant", "reverse-proxy", "odysseus", "sidecar", "cli", "agent-native", "async"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

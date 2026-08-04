@@ -1,17 +1,17 @@
 {
   "name": "workspaceguard-cli",
-  "version": "0.1.3",
-  "description": "Per-workspace usage metering and quota caps for shared self-hosted AI assistant deployments",
+  "version": "0.1.4",
+  "description": "Per-workspace usage metering and fail-closed quota caps for shared self-hosted AI assistant deployments (Odysseus and compatible backends). CLI plus library, agent-native --json output.",
   "keywords": [
     "self-hosted",
     "ai-assistant",
     "usage-metering",
     "quota",
-    "billing",
+    "fail-closed",
     "multi-tenant",
     "reverse-proxy",
     "odysseus",
-    "docker-compose",
+    "sidecar",
     "cli",
     "agent-native"
   ],
