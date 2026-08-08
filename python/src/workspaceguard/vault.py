@@ -36,21 +36,57 @@ class Vault:
         self._master_key_path = master_key_path
         self._master_key: Optional[bytes] = None
 
-    async def init(self) -> None:
+    async def init(self, force: bool = False) -> None:
+        """
+        Loads the master key at ``master_key_path``, generating and
+        persisting a new one only when no key exists there yet
+        (``FileNotFoundError``). Any other read failure (permission denied,
+        the path is a directory, a disk error, ...) propagates instead of
+        being treated as "no key yet" -- the previous implementation caught
+        every exception indiscriminately, which meant a transient or
+        permissions-related read failure against an existing key could
+        silently fall through to generating and writing a brand-new one
+        over it.
+
+        If a key file exists but doesn't decode to a valid ``KEY_BYTES``
+        -length key (corrupted, truncated, or otherwise not a key this
+        Vault wrote), this refuses to silently regenerate and overwrite it
+        -- doing so would permanently strand anything already encrypted
+        under the old key. Pass ``force=True`` (wired to the CLI's
+        ``init --force``) to explicitly accept that and regenerate anyway.
+        """
+        import base64
+        import binascii
+
+        existing_raw: Optional[str] = None
         try:
             with open(self._master_key_path, "r", encoding="utf-8") as fh:
-                raw = fh.read().strip()
-            import base64
-
-            self._master_key = base64.b64decode(raw)
+                existing_raw = fh.read().strip()
         except FileNotFoundError:
-            import base64
+            existing_raw = None
 
-            self._master_key = secrets.token_bytes(KEY_BYTES)
-            os.makedirs(os.path.dirname(self._master_key_path), exist_ok=True)
-            with open(self._master_key_path, "w", encoding="utf-8") as fh:
-                fh.write(base64.b64encode(self._master_key).decode("ascii"))
-            os.chmod(self._master_key_path, 0o600)
+        if existing_raw is not None:
+            try:
+                candidate = base64.b64decode(existing_raw, validate=False)
+            except (binascii.Error, ValueError):
+                candidate = b""
+            if len(candidate) == KEY_BYTES:
+                self._master_key = candidate
+                return
+            if not force:
+                raise ValueError(
+                    f"existing master key at {self._master_key_path} does not decode to a valid "
+                    f"{KEY_BYTES}-byte key (corrupted or truncated). Refusing to silently overwrite "
+                    "it -- re-run with --force to regenerate a new key. WARNING: this permanently "
+                    "invalidates anything already encrypted under the old key."
+                )
+            # force is True: fall through and regenerate below.
+
+        self._master_key = secrets.token_bytes(KEY_BYTES)
+        os.makedirs(os.path.dirname(self._master_key_path), exist_ok=True)
+        with open(self._master_key_path, "w", encoding="utf-8") as fh:
+            fh.write(base64.b64encode(self._master_key).decode("ascii"))
+        os.chmod(self._master_key_path, 0o600)
 
     def _require_master_key(self) -> bytes:
         if self._master_key is None:

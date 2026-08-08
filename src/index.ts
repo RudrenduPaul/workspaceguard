@@ -21,6 +21,8 @@ export interface CreateWorkspaceGuardOptions {
   backend: BackendAdapter;
   /** Test-only override for the circuit breaker's open-state cooldown. */
   circuitOpenCooldownMs?: number;
+  /** See IsolationGuardOptions.force -- forces master-key regeneration over an existing corrupted key. */
+  force?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export async function createWorkspaceGuard(options: CreateWorkspaceGuardOptions)
     dataDir: options.dataDir,
     backend: options.backend,
     circuitOpenCooldownMs: options.circuitOpenCooldownMs,
+    force: options.force,
   });
   await guard.init();
   return guard;

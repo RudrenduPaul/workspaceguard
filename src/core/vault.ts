@@ -22,16 +22,54 @@ export class Vault {
 
   constructor(private readonly masterKeyPath: string) {}
 
-  async init(): Promise<void> {
+  /**
+   * Loads the master key at `masterKeyPath`, generating and persisting a
+   * new one only when no key exists there yet (`ENOENT`). Any other read
+   * failure (permission denied, the path is a directory, a disk error, ...)
+   * propagates instead of being treated as "no key yet" -- the previous
+   * implementation caught every error indiscriminately, which meant a
+   * transient or permissions-related read failure against an existing key
+   * could silently fall through to generating and writing a brand-new one
+   * over it.
+   *
+   * If a key file exists but doesn't decode to a valid `KEY_BYTES`-length
+   * key (corrupted, truncated, or otherwise not a key this Vault wrote),
+   * this refuses to silently regenerate and overwrite it -- doing so would
+   * permanently strand anything already encrypted under the old key. Pass
+   * `force: true` (wired to the CLI's `init --force`) to explicitly accept
+   * that and regenerate anyway.
+   */
+  async init(force = false): Promise<void> {
+    let existingRaw: string | undefined;
     try {
-      const raw = await readFile(this.masterKeyPath, "utf8");
-      this.masterKey = Buffer.from(raw.trim(), "base64");
-    } catch {
-      this.masterKey = randomBytes(KEY_BYTES);
-      await mkdir(dirname(this.masterKeyPath), { recursive: true });
-      await writeFile(this.masterKeyPath, this.masterKey.toString("base64"), "utf8");
-      await chmod(this.masterKeyPath, 0o600);
+      existingRaw = await readFile(this.masterKeyPath, "utf8");
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw err;
+      }
     }
+
+    if (existingRaw !== undefined) {
+      const candidate = Buffer.from(existingRaw.trim(), "base64");
+      if (candidate.length === KEY_BYTES) {
+        this.masterKey = candidate;
+        return;
+      }
+      if (!force) {
+        throw new Error(
+          `existing master key at ${this.masterKeyPath} does not decode to a valid ${KEY_BYTES}-byte key ` +
+            "(corrupted or truncated). Refusing to silently overwrite it -- re-run with --force to " +
+            "regenerate a new key. WARNING: this permanently invalidates anything already encrypted " +
+            "under the old key.",
+        );
+      }
+      // force === true: fall through and regenerate below.
+    }
+
+    this.masterKey = randomBytes(KEY_BYTES);
+    await mkdir(dirname(this.masterKeyPath), { recursive: true });
+    await writeFile(this.masterKeyPath, this.masterKey.toString("base64"), "utf8");
+    await chmod(this.masterKeyPath, 0o600);
   }
 
   private requireMasterKey(): Buffer {

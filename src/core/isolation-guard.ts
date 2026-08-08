@@ -22,6 +22,13 @@ export interface IsolationGuardOptions {
   logger?: Logger;
   /** Test-only override for the circuit breaker's open-state cooldown. */
   circuitOpenCooldownMs?: number;
+  /**
+   * Forces the vault to regenerate its master key even if an existing key
+   * file at the resolved path looks corrupted/invalid. Wired to the CLI's
+   * `init --force`; every other command leaves this false so an ambiguous
+   * key file fails loudly instead of being silently replaced.
+   */
+  force?: boolean;
 }
 
 /**
@@ -38,6 +45,7 @@ export class IsolationGuard {
   private readonly vault: Vault;
   private readonly circuit: CircuitBreaker;
   private readonly usage: UsageMeter;
+  private readonly force: boolean;
   private config: WorkspaceGuardConfig = { backend: "odysseus", identityHeader: "", workspaces: [] };
 
   constructor(options: IsolationGuardOptions) {
@@ -47,6 +55,7 @@ export class IsolationGuard {
     this.vault = new Vault(join(this.dataDir, ".workspaceguard", "master.key"));
     this.circuit = new CircuitBreaker(this.backend.name, this.logger, options.circuitOpenCooldownMs);
     this.usage = new UsageMeter(this.dataDir);
+    this.force = options.force ?? false;
   }
 
   private get configPath(): string {
@@ -54,7 +63,7 @@ export class IsolationGuard {
   }
 
   async init(): Promise<void> {
-    await this.vault.init();
+    await this.vault.init(this.force);
     this.config = await loadConfig(this.configPath);
   }
 

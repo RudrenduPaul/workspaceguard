@@ -6,6 +6,48 @@ repo root) and the PyPI package (`workspaceguard-cli`, Python, `python/`)
 -- since they implement the same design; entries note which distribution
 they apply to.
 
+## [0.1.5 / Python 0.1.5] - Data directory default and overwrite protection
+
+Security/UX fix from a same-day audit reproducing the documented
+quickstart: `workspaceguard init` silently wrote a live AES-256-GCM
+`master.key` into whatever directory the command was run from, with no
+flag to redirect it (an undocumented `WORKSPACEGUARD_DATA_DIR` env var
+already existed in the code but was easy to miss and not surfaced as a
+`--help` option), and no distinction between "no key yet" and "the
+existing key file looks wrong" before deciding whether to generate one.
+Applied identically to both distributions (`src/core/`, `python/src/workspaceguard/`):
+
+- **Changed default data directory from the current working directory to
+  `~/.workspaceguard`.** New `src/core/paths.ts` / `python/src/workspaceguard/paths.py`
+  (`defaultDataDir()` / `default_data_dir()`) resolve a stable,
+  cwd-independent default with no new dependency (no cross-platform
+  app-data-directory package was already a dependency of either
+  distribution).
+- **Added a real `--data-dir <path>` CLI flag** to every command, not just
+  `init` (`workspaceguard status --data-dir ~/.workspaceguard`, etc.).
+  Resolution order is now `--data-dir` flag, then `WORKSPACEGUARD_DATA_DIR`
+  env var (unchanged, now documented in `--help` and both READMEs), then
+  `~/.workspaceguard`.
+- **Added overwrite protection to `Vault.init()`/`vault.init()`.** Only a
+  genuinely missing key file (`ENOENT` / `FileNotFoundError`) is treated as
+  "no key yet, generate one" -- any other read failure (permission denied,
+  the path is a directory, a disk error) now propagates instead of being
+  silently swallowed into "no key yet," which previously risked generating
+  and writing a fresh key over an existing one on an ambiguous read error.
+  If a key file exists but doesn't decode to a valid 32-byte key
+  (corrupted or truncated), `init` now refuses to regenerate it and exits
+  non-zero with an explanation, unless the new `--force` flag is passed --
+  regenerating over a corrupted key permanently invalidates anything
+  already encrypted under the old one, so this is opt-in, not automatic.
+- Documented all of the above in `docs/getting-started.md`, the root
+  README, and `python/README.md`'s CLI reference (new "Global options"
+  section in each).
+- New tests: `src/core/vault.test.ts`, `src/cli/index.test.ts`,
+  `python/tests/test_vault.py`, plus additions to
+  `python/tests/test_cli.py`, covering the new default location,
+  `--data-dir` precedence over the env var, and the corrupted-key
+  overwrite-protection/`--force` behavior in both distributions.
+
 ## [0.1.3 / Python 0.1.3] - Pending publish -- CLI fix, metadata, doc corrections
 
 **Known issue on the currently published `0.1.2` release of both

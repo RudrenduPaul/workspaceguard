@@ -64,9 +64,20 @@ $ workspaceguard usage --json
 {"ok": true, "usage": [{"workspaceId": "alex", "identity": "alex@example.com", "monthlyMessageCap": 1000, "percentUsed": 0, "period": "2026-07", "messageCount": 0, "estimatedBytes": 0}]}
 ```
 
-By default the CLI reads/writes its config and usage data in the current
-working directory. Set `WORKSPACEGUARD_DATA_DIR` to point it somewhere
-else.
+By default the CLI reads/writes its config, vault, and usage data under
+`~/.workspaceguard` (the current user's home directory), not the current
+working directory -- this used to default to the cwd, which could silently
+drop a live encryption key into whatever directory the command happened to
+be run from. Override the location with, in order of precedence:
+
+1. `--data-dir <path>` on the command itself, e.g. `workspaceguard init --data-dir ./data`.
+2. The `WORKSPACEGUARD_DATA_DIR` environment variable.
+3. The `~/.workspaceguard` default, if neither of the above is set.
+
+`init` also refuses to silently regenerate the master key if an existing
+key file at the resolved location looks corrupted or truncated -- pass
+`--force` to explicitly accept overwriting it (this permanently
+invalidates anything already encrypted under the old key).
 
 ## Using the library instead of the CLI
 

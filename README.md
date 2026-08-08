@@ -55,7 +55,7 @@ The package is `workspaceguard-cli`; the command it installs is `workspaceguard`
 - **AES-256-GCM vault with real key rotation.** `workspaceguard rotate-key <id>` re-encrypts a workspace's secrets under a new key and invalidates the old ciphertext.
 - **A self-healing circuit breaker.** Backend calls open the circuit after 3 consecutive failures, then retry through a half-open probe and close again on success, instead of staying tripped forever.
 - **One choke point, not scattered checks.** `chat()` in `src/core/isolation-guard.ts` is the single place every request flows through: resolve workspace, check quota, call backend, record usage.
-- **Two independent, tested distributions.** The TypeScript package (npm) and the Python port (PyPI) implement the same design against separate test suites: 27/27 TypeScript tests and 40/40 Python tests passing as of this writing.
+- **Two independent, tested distributions.** The TypeScript package (npm) and the Python port (PyPI) implement the same design against separate test suites: 41/41 TypeScript tests and 50/50 Python tests passing as of this writing.
 
 ## Quickstart
 
@@ -96,6 +96,16 @@ Every command accepts `--json` for a structured, agent-native output shape inste
 | `workspaceguard scan [--json]` | Isolation config scan (scaffold stub, carried over from the original build; always returns an empty finding list today). |
 | `workspaceguard -h`, `--help` | Prints the command list above and exits `0`. |
 | `workspaceguard -V`, `--version` | Prints the installed package version and exits `0`. |
+
+### Global options
+
+| Option | What it does |
+|---|---|
+| `--data-dir <path>` | Data directory for config, vault, and usage data. Takes precedence over `WORKSPACEGUARD_DATA_DIR`. |
+| `--force` | `init` only: regenerate the master key even if an existing key file at the resolved data dir looks corrupted or truncated. **Warning:** permanently invalidates anything already encrypted under the old key. |
+| `--json` | Structured, agent-native output instead of human-readable text. |
+
+**Data directory resolution, in order:** `--data-dir` flag, then `WORKSPACEGUARD_DATA_DIR` env var, then `~/.workspaceguard`. This used to default to the current working directory with no override -- running `init` from the wrong shell could silently write a live encryption key into an unrelated directory. `init` on an existing, valid key is idempotent (it loads and reuses that key); `init` on a key file that exists but doesn't decode to a valid key refuses to overwrite it without `--force`.
 
 ```bash
 $ workspaceguard usage --json
@@ -161,7 +171,7 @@ WorkspaceGuard trusts an upstream identity header (default: `Cf-Access-Authentic
 
 ## What's real vs. not yet built
 
-- **Real and tested:** usage metering, quota enforcement, the original isolation engine (vault, namespace separation, circuit breaker), and the CLI with `--json` mode, verified by 27/27 passing TypeScript tests and 40/40 passing Python tests.
+- **Real and tested:** usage metering, quota enforcement, the original isolation engine (vault, namespace separation, circuit breaker), and the CLI with `--json` mode, verified by 41/41 passing TypeScript tests and 50/50 passing Python tests.
 - **Not yet built:** a real Odysseus HTTP adapter (only `MockAdapter` exists today) and a hosted, multi-tenant billing dashboard (deliberately out of scope for this MIT repo).
 
 ## Docs

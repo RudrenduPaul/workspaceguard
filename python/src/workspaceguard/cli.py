@@ -20,6 +20,7 @@ from typing import Any, List, Optional, Tuple
 
 from . import create_workspace_guard
 from .adapters.mock import MockAdapter
+from .paths import default_data_dir
 
 
 def _package_version() -> str:
@@ -29,7 +30,7 @@ def _package_version() -> str:
         return "0.0.0-dev"
 
 
-HELP_TEXT = """usage: workspaceguard <command> [args] [--json]
+HELP_TEXT = """usage: workspaceguard <command> [args] [--data-dir <path>] [--json]
 
 commands:
   init                              initialize workspaceguard in the current (or configured) data directory
@@ -41,9 +42,16 @@ commands:
   scan                              scan isolation config for misconfigurations
 
 global options:
-  --json          output structured JSON instead of human-readable text
-  -h, --help      show this help message and exit
-  -V, --version   show the installed version and exit"""
+  --data-dir <path>  data directory to use for config, vault, and usage data.
+                      Overrides WORKSPACEGUARD_DATA_DIR. Default:
+                      $WORKSPACEGUARD_DATA_DIR, then ~/.workspaceguard.
+  --force            (init only) regenerate the master key even if an
+                      existing key file at the resolved data dir looks
+                      corrupted. WARNING: permanently invalidates anything
+                      already encrypted under the old key.
+  --json             output structured JSON instead of human-readable text
+  -h, --help         show this help message and exit
+  -V, --version      show the installed version and exit"""
 
 STARTUP_WARNING = (
     "WARNING: workspaceguard must never be directly reachable from the network.\n"
@@ -59,6 +67,35 @@ USAGE = "usage: workspaceguard <init|add-workspace|status|rotate-key|usage|set-c
 def _extract_json_flag(args: List[str]) -> Tuple[bool, List[str]]:
     """Strips a boolean flag out of an argv slice, agent-native mode toggle for every command."""
     rest = [a for a in args if a != "--json"]
+    return len(rest) != len(args), rest
+
+
+def _extract_data_dir_flag(args: List[str]) -> Tuple[Optional[str], List[str]]:
+    """Strips `--data-dir <path>` / `--data-dir=<path>` out of an argv slice."""
+    rest: List[str] = []
+    data_dir: Optional[str] = None
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--data-dir":
+            if i + 1 < len(args):
+                data_dir = args[i + 1]
+                i += 2
+                continue
+            i += 1
+            continue
+        if arg.startswith("--data-dir="):
+            data_dir = arg[len("--data-dir=") :]
+            i += 1
+            continue
+        rest.append(arg)
+        i += 1
+    return data_dir, rest
+
+
+def _extract_force_flag(args: List[str]) -> Tuple[bool, List[str]]:
+    """Strips the `--force`/`-f` flag out of an argv slice (currently only meaningful for `init`)."""
+    rest = [a for a in args if a not in ("--force", "-f")]
     return len(rest) != len(args), rest
 
 
@@ -88,8 +125,10 @@ def _usage_report_to_dict(report: Any) -> dict:
 async def _run(argv: List[str]) -> int:
     command = argv[1] if len(argv) > 1 else None
     raw_args = argv[2:]
-    json_mode, args = _extract_json_flag(raw_args)
-    data_dir = os.environ.get("WORKSPACEGUARD_DATA_DIR") or os.getcwd()
+    json_mode, after_json = _extract_json_flag(raw_args)
+    data_dir_flag, after_data_dir = _extract_data_dir_flag(after_json)
+    force, args = _extract_force_flag(after_data_dir)
+    data_dir = data_dir_flag or os.environ.get("WORKSPACEGUARD_DATA_DIR") or default_data_dir()
 
     if command in ("--help", "-h"):
         print(HELP_TEXT)
@@ -102,7 +141,7 @@ async def _run(argv: List[str]) -> int:
     if command == "init":
         if not json_mode:
             print(STARTUP_WARNING)
-        guard = await create_workspace_guard(data_dir=data_dir, backend=MockAdapter())
+        guard = await create_workspace_guard(data_dir=data_dir, backend=MockAdapter(), force=force)
         workspaces = await guard.status()
         _print_result(json_mode, {"ok": True, "dataDir": data_dir, "workspaces": workspaces}, [
             f"workspaceguard initialized in {data_dir}"

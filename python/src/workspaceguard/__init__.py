@@ -34,13 +34,14 @@ from .types import (
 )
 from .usage import QuotaExceededError, WorkspaceUsage
 
-__version__ = "0.1.1"
+__version__ = "0.1.5"
 
 
 async def create_workspace_guard(
     data_dir: str,
     backend: BackendAdapter,
     circuit_open_cooldown_ms: Optional[int] = None,
+    force: bool = False,
 ) -> IsolationGuard:
     """
     The library entry point -- the "agent-native" surface. An orchestrator
@@ -49,11 +50,17 @@ async def create_workspace_guard(
     wants (the real Odysseus adapter ships once the feasibility spike
     confirms clean HTTP interception; MockAdapter is exported for tests and
     local experimentation).
+
+    ``force`` regenerates the master key even if an existing key file at
+    the resolved data dir looks corrupted -- see Vault.init() and the CLI's
+    ``init --force``. Every other call site should leave this False so an
+    ambiguous key file fails loudly instead of being silently replaced.
     """
     guard = IsolationGuard(
         data_dir=data_dir,
         backend=backend,
         circuit_open_cooldown_ms=circuit_open_cooldown_ms,
+        force=force,
     )
     await guard.init()
     return guard

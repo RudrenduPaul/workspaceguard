@@ -38,7 +38,7 @@ for the full story.
 pip install workspaceguard-cli
 ```
 
-**Current status**: this Python port is fully built, tested (40/40 pytest
+**Current status**: this Python port is fully built, tested (50/50 pytest
 tests passing), and published to PyPI. `pip install workspaceguard-cli`
 works today -- see
 [pypi.org/project/workspaceguard-cli](https://pypi.org/project/workspaceguard-cli/).
@@ -87,6 +87,16 @@ to the npm CLI.
 | `workspaceguard scan [--json]` | Isolation config scan (scaffold stub, carried over from the original build). |
 | `workspaceguard -h`, `--help` | Prints the command list above and exits. |
 | `workspaceguard -V`, `--version` | Prints the installed package version and exits. |
+
+### Global options
+
+| Option | What it does |
+|---|---|
+| `--data-dir <path>` | Data directory for config, vault, and usage data. Takes precedence over `WORKSPACEGUARD_DATA_DIR`. |
+| `--force` | `init` only: regenerate the master key even if an existing key file at the resolved data dir looks corrupted or truncated. **Warning:** permanently invalidates anything already encrypted under the old key. |
+| `--json` | Structured, agent-native output instead of human-readable text. |
+
+**Data directory resolution, in order:** `--data-dir` flag, then `WORKSPACEGUARD_DATA_DIR` env var, then `~/.workspaceguard`. This used to default to the current working directory with no override -- running `init` from the wrong shell could silently write a live encryption key into an unrelated directory. `init` on an existing, valid key is idempotent (it loads and reuses that key); `init` on a key file that exists but doesn't decode to a valid key refuses to overwrite it without `--force`.
 
 **Known issue on the currently published `0.1.2` release**: the `-h`/`--help`
 and `-V`/`--version` rows above describe the fixed, not-yet-published
@@ -161,7 +171,7 @@ is documented, not code-enforced.
 
 ## What's real vs. not yet built
 
-- Real, tested (40/40 pytest tests passing): usage metering, quota
+- Real, tested (50/50 pytest tests passing): usage metering, quota
   enforcement, the original isolation engine (vault, namespace separation,
   circuit breaker), CLI with `--json` mode.
 - Not yet built: a real Odysseus HTTP adapter (only `MockAdapter` exists so

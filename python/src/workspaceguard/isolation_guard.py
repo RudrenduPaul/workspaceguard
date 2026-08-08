@@ -41,6 +41,7 @@ class IsolationGuard:
         backend: BackendAdapter,
         logger: Optional[Logger] = None,
         circuit_open_cooldown_ms: Optional[int] = None,
+        force: bool = False,
     ) -> None:
         self._data_dir = data_dir
         self._backend = backend
@@ -49,6 +50,7 @@ class IsolationGuard:
         kwargs = {} if circuit_open_cooldown_ms is None else {"open_cooldown_ms": circuit_open_cooldown_ms}
         self._circuit = CircuitBreaker(backend.name, self._logger, **kwargs)
         self._usage = UsageMeter(self._data_dir)
+        self._force = force
         self._config = WorkspaceGuardConfig(backend="odysseus", identity_header="", workspaces=[])
         # Per-workspace lock so a concurrent quota check-then-record can't
         # race across two calls to chat() for the same workspace (in-process
@@ -61,7 +63,7 @@ class IsolationGuard:
         return os.path.join(self._data_dir, "workspaceguard.config.yaml")
 
     async def init(self) -> None:
-        await self._vault.init()
+        await self._vault.init(self._force)
         self._config = load_config(self._config_path)
 
     async def add_workspace(self, workspace_id: str, identity: str) -> None:
