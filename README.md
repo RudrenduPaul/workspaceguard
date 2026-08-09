@@ -7,6 +7,8 @@ Per-workspace usage metering and fail-closed quota caps for one shared self-host
 [![PyPI version](https://img.shields.io/pypi/v/workspaceguard-cli.svg)](https://pypi.org/project/workspaceguard-cli/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/RudrenduPaul/workspaceguard/blob/main/LICENSE)
 
+![Installing workspaceguard-cli from npm and running init, add-workspace, set-cap, and usage for the first time in a terminal](./docs/demo.gif)
+
 Run Odysseus (or a compatible self-hosted assistant) for your household or small team and there's no way to see who sent how many messages this month, or to stop one person's usage from burning through everyone else's API budget. WorkspaceGuard is a sidecar that adds that layer: per-workspace message counts, an optional monthly cap that fails closed, and a CLI (or JSON) report an admin or another agent can read.
 
 ```bash
@@ -14,8 +16,6 @@ npx workspaceguard-cli usage
 -> alex   [alex@example.com]: 812 messages this period, cap 1000 (81%)
 -> jordan [jordan@example.com]: 203 messages this period, cap unlimited
 ```
-
-![Installing workspaceguard-cli from npm and running init, add-workspace, set-cap, and usage for the first time in a terminal](./docs/demo.gif)
 
 ## Install
 
