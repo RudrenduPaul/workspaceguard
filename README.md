@@ -50,7 +50,7 @@ The package is `workspaceguard-cli`; the command it installs is `workspaceguard`
 ## Features
 
 - **Per-workspace message counting.** Every request through the sidecar's `chat()` entry point increments a per-workspace, per-month counter (`src/core/usage.ts`), isolated so one workspace's usage never leaks into another's.
-- **Quota enforcement that fails closed.** A workspace at its cap gets a `QuotaExceededError` before the backend is ever called. If the usage store is corrupted or unreadable, WorkspaceGuard blocks requests instead of silently resetting everyone's count to zero (fixed in 0.1.1, see [CHANGELOG.md](./CHANGELOG.md)).
+- **Quota enforcement that fails closed.** A workspace at its cap gets a `QuotaExceededError` before the backend is ever called. If the usage store is corrupted or unreadable, WorkspaceGuard blocks requests instead of silently resetting everyone's count to zero (see [CHANGELOG.md](./CHANGELOG.md)).
 - **Agent-native `--json` on every command.** `workspaceguard usage --json` returns structured output an orchestrator can parse directly, no screen-scraping.
 - **AES-256-GCM vault with real key rotation.** `workspaceguard rotate-key <id>` re-encrypts a workspace's secrets under a new key and invalidates the old ciphertext.
 - **A self-healing circuit breaker.** Backend calls open the circuit after 3 consecutive failures, then retry through a half-open probe and close again on success, instead of staying tripped forever.
@@ -187,7 +187,7 @@ WorkspaceGuard trusts an upstream identity header (default: `Cf-Access-Authentic
 A: It adds per-workspace usage metering and quota enforcement in front of one shared self-hosted AI assistant deployment. It counts messages per workspace per month, lets you set an optional cap that fails closed once hit, and gives you (or an agent) a `workspaceguard usage` report. It does not add chat history, memory, or API key isolation itself; that already exists by default in the target platform (see "What is WorkspaceGuard" above), and WorkspaceGuard's own isolation code (`src/core/vault.ts`, `src/core/namespace.ts`) is kept only as the identity-resolution substrate the metering layer reads from.
 
 **Q: What's WorkspaceGuard's actual differentiator?**
-A: Narrow scope done well: not a full billing platform, and not a reimplementation of isolation the backend already has. Every request flows through one choke point (`chat()` in `src/core/isolation-guard.ts`), quota enforcement fails closed on a corrupted usage store instead of silently resetting everyone's usage to zero (fixed in 0.1.1, see [CHANGELOG.md](./CHANGELOG.md)), and every command supports `--json` for agent-native output.
+A: Narrow scope done well: not a full billing platform, and not a reimplementation of isolation the backend already has. Every request flows through one choke point (`chat()` in `src/core/isolation-guard.ts`), quota enforcement fails closed on a corrupted usage store instead of silently resetting everyone's usage to zero (see [CHANGELOG.md](./CHANGELOG.md)), and every command supports `--json` for agent-native output.
 
 **Q: How does WorkspaceGuard compare to Odysseus?**
 A: It isn't a competing product. WorkspaceGuard is a sidecar that sits in front of an Odysseus deployment (or a compatible backend); it doesn't replace anything Odysseus already does. See the [comparison table](#comparison) above for the specific capability split.

@@ -98,14 +98,10 @@ to the npm CLI.
 
 **Data directory resolution, in order:** `--data-dir` flag, then `WORKSPACEGUARD_DATA_DIR` env var, then `~/.workspaceguard`. This used to default to the current working directory with no override -- running `init` from the wrong shell could silently write a live encryption key into an unrelated directory. `init` on an existing, valid key is idempotent (it loads and reuses that key); `init` on a key file that exists but doesn't decode to a valid key refuses to overwrite it without `--force`.
 
-**Known issue on the currently published `0.1.2` release**: the `-h`/`--help`
-and `-V`/`--version` rows above describe the fixed, not-yet-published
-behavior. `workspaceguard-cli==0.1.2` (the version live on PyPI today) does
-not implement those two flags; running either one falls through to the
-default unknown-command path and exits with status `1`. Every other
-command in this table works as documented on `0.1.2`. See
+Both `-h`/`--help` and `-V`/`--version` work as documented on the currently
+published release. See
 [CHANGELOG.md](https://github.com/RudrenduPaul/workspaceguard/blob/main/CHANGELOG.md)
-for the fix and its publish status.
+for release history.
 
 ## Library API
 
