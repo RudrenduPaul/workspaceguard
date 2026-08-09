@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createWorkspaceGuard } from "../index.js";
 import { MockAdapter } from "../adapters/mock.js";
@@ -211,9 +212,17 @@ export async function main(argv: string[] = process.argv): Promise<void> {
 // percent-encodes characters like spaces in the path while process.argv[1]
 // does not -- a naive `file://${process.argv[1]}` comparison silently
 // never matches on a path containing a space.
+// process.argv[1] is resolved through realpathSync before the comparison
+// because a global npm/npx install wires the `workspaceguard` bin as a
+// symlink -- argv[1] stays the symlink path while import.meta.url resolves
+// through it to the real target file, so the two never matched, the guard
+// silently evaluated false, and the CLI exited 0 having done nothing.
 const isDirectRun = (() => {
   try {
-    return process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+    return (
+      process.argv[1] !== undefined &&
+      import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href
+    );
   } catch {
     return false;
   }

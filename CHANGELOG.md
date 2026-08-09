@@ -6,6 +6,31 @@ repo root) and the PyPI package (`workspaceguard-cli`, Python, `python/`)
 -- since they implement the same design; entries note which distribution
 they apply to.
 
+## [0.1.6] - npm only -- fix silent no-op on global/npx install
+
+**Known issue on the currently published `0.1.5` npm release**: a clean
+`npm install -g workspaceguard-cli` (or an `npx workspaceguard-cli`
+invocation), followed by running `workspaceguard --help`, `--version`, or
+any command, produces zero output and exits `0` -- the CLI's entrypoint
+guard in `src/cli/index.ts` never runs. Root cause: the guard compared
+`import.meta.url` against `pathToFileURL(process.argv[1]).href` without
+first resolving symlinks, and both a global npm `bin` install and an
+`npx` run wire `workspaceguard` up as a symlink -- `process.argv[1]`
+stays the symlink path while `import.meta.url` resolves through it to the
+real target file, so the two never matched. The Python distribution
+(`python/`) is unaffected -- this is fixed in this version:
+
+- **Resolved `process.argv[1]` via `fs.realpathSync` before comparing**
+  against `import.meta.url`, so the guard correctly recognizes itself
+  when invoked through a symlink (global npm bin, npx) as well as a
+  direct `node dist/cli/index.js` run.
+- Verified via `npm pack` + a global install into a disposable prefix
+  (reproducing the real symlinked-bin install path): `workspaceguard
+  --help` and `workspaceguard --version` now print the documented output
+  and exit `0`.
+- No behavior change for direct/non-symlinked invocations; all 41
+  existing tests pass unchanged.
+
 ## [0.1.5 / Python 0.1.5] - Data directory default and overwrite protection
 
 Security/UX fix from a same-day audit reproducing the documented
