@@ -97,6 +97,8 @@ Every command accepts `--json` for a structured, agent-native output shape inste
 | `workspaceguard -h`, `--help` | Prints the command list above and exits `0`. |
 | `workspaceguard -V`, `--version` | Prints the installed package version and exits `0`. |
 
+![Running workspaceguard scan --json, the isolation config scan scaffold stub](./docs/demo-scan.gif)
+
 ### Global options
 
 | Option | What it does |
