@@ -1,11 +1,19 @@
 # WorkspaceGuard
 
-Per-workspace usage metering and fail-closed quota caps for one shared self-hosted AI assistant deployment ([Odysseus](https://github.com/pewdiepie-archdaemon/odysseus) or a compatible backend).
-
 [![CI](https://github.com/RudrenduPaul/workspaceguard/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/workspaceguard/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/workspaceguard-cli.svg)](https://www.npmjs.com/package/workspaceguard-cli)
 [![PyPI version](https://img.shields.io/pypi/v/workspaceguard-cli.svg)](https://pypi.org/project/workspaceguard-cli/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/RudrenduPaul/workspaceguard/blob/main/LICENSE)
+
+<p align="center">
+  <a href="#install">Install</a> •
+  <a href="#quickstart">Quickstart</a> •
+  <a href="#cli-reference">CLI Reference</a> •
+  <a href="#comparison">Comparison</a> •
+  <a href="#faq">FAQ</a>
+</p>
+
+Per-workspace usage metering and fail-closed quota caps for one shared self-hosted AI assistant deployment ([Odysseus](https://github.com/pewdiepie-archdaemon/odysseus) or a compatible backend).
 
 ![Installing workspaceguard-cli from npm and running init, add-workspace, set-cap, and usage for the first time in a terminal](./docs/demo.gif)
 
@@ -31,32 +39,6 @@ npx workspaceguard-cli usage
 
 The package is `workspaceguard-cli`; the command it installs is `workspaceguard`. A genuine, independent Python port with the same CLI surface and `--json` shapes is published separately as `workspaceguard-cli` on PyPI (`pip install workspaceguard-cli`, see [python/](./python)).
 
-## Contents
-
-- [Features](#features)
-- [Quickstart](#quickstart)
-- [CLI reference](#cli-reference)
-- [Library API](#library-api)
-- [Comparison](#comparison)
-- [What is WorkspaceGuard, and why does it exist](#what-is-workspaceguard-and-why-does-it-exist)
-- [Architecture](#architecture)
-- [Trust boundary](#trust-boundary)
-- [What's real vs. not yet built](#whats-real-vs-not-yet-built)
-- [Docs](#docs)
-- [FAQ](#faq)
-- [Contributing and security](#contributing-and-security)
-- [License](#license)
-
-## Features
-
-- **Per-workspace message counting.** Every request through the sidecar's `chat()` entry point increments a per-workspace, per-month counter (`src/core/usage.ts`), isolated so one workspace's usage never leaks into another's.
-- **Quota enforcement that fails closed.** A workspace at its cap gets a `QuotaExceededError` before the backend is ever called. If the usage store is corrupted or unreadable, WorkspaceGuard blocks requests instead of silently resetting everyone's count to zero (see [CHANGELOG.md](./CHANGELOG.md)).
-- **Agent-native `--json` on every command.** `workspaceguard usage --json` returns structured output an orchestrator can parse directly, no screen-scraping.
-- **AES-256-GCM vault with real key rotation.** `workspaceguard rotate-key <id>` re-encrypts a workspace's secrets under a new key and invalidates the old ciphertext.
-- **A self-healing circuit breaker.** Backend calls open the circuit after 3 consecutive failures, then retry through a half-open probe and close again on success, instead of staying tripped forever.
-- **One choke point, not scattered checks.** `chat()` in `src/core/isolation-guard.ts` is the single place every request flows through: resolve workspace, check quota, call backend, record usage.
-- **Two independent, tested distributions.** The TypeScript package (npm) and the Python port (PyPI) implement the same design against separate test suites: 41/41 TypeScript tests and 50/50 Python tests passing as of this writing.
-
 ## Quickstart
 
 ```bash
@@ -81,6 +63,16 @@ Real output from a fresh install:
 
 ![Running workspaceguard status --json, rotate-key, and usage --json to show structured output and vault key rotation](./docs/usage.gif)
 
+## Features
+
+- **Per-workspace message counting.** Every request through the sidecar's `chat()` entry point increments a per-workspace, per-month counter (`src/core/usage.ts`), isolated so one workspace's usage never leaks into another's.
+- **Quota enforcement that fails closed.** A workspace at its cap gets a `QuotaExceededError` before the backend is ever called. If the usage store is corrupted or unreadable, WorkspaceGuard blocks requests instead of silently resetting everyone's count to zero (see [CHANGELOG.md](./CHANGELOG.md)).
+- **Agent-native `--json` on every command.** `workspaceguard usage --json` returns structured output an orchestrator can parse directly, no screen-scraping.
+- **AES-256-GCM vault with real key rotation.** `workspaceguard rotate-key <id>` re-encrypts a workspace's secrets under a new key and invalidates the old ciphertext.
+- **A self-healing circuit breaker.** Backend calls open the circuit after 3 consecutive failures, then retry through a half-open probe and close again on success, instead of staying tripped forever.
+- **One choke point, not scattered checks.** `chat()` in `src/core/isolation-guard.ts` is the single place every request flows through: resolve workspace, check quota, call backend, record usage.
+- **Two independent, tested distributions.** The TypeScript package (npm) and the Python port (PyPI) implement the same design against separate test suites: 41/41 TypeScript tests and 50/50 Python tests passing as of this writing.
+
 ## CLI reference
 
 Every command accepts `--json` for a structured, agent-native output shape instead of the human-readable text shown below.
@@ -104,8 +96,11 @@ Every command accepts `--json` for a structured, agent-native output shape inste
 | Option | What it does |
 |---|---|
 | `--data-dir <path>` | Data directory for config, vault, and usage data. Takes precedence over `WORKSPACEGUARD_DATA_DIR`. |
-| `--force` | `init` only: regenerate the master key even if an existing key file at the resolved data dir looks corrupted or truncated. **Warning:** permanently invalidates anything already encrypted under the old key. |
+| `--force` | `init` only: regenerate the master key even if an existing key file at the resolved data dir looks corrupted or truncated. |
 | `--json` | Structured, agent-native output instead of human-readable text. |
+
+> [!WARNING]
+> `--force` permanently invalidates anything already encrypted under the old master key. Only use it when the existing key file is confirmed unrecoverable.
 
 **Data directory resolution, in order:** `--data-dir` flag, then `WORKSPACEGUARD_DATA_DIR` env var, then `~/.workspaceguard`. This used to default to the current working directory with no override -- running `init` from the wrong shell could silently write a live encryption key into an unrelated directory. `init` on an existing, valid key is idempotent (it loads and reuses that key); `init` on a key file that exists but doesn't decode to a valid key refuses to overwrite it without `--force`.
 
@@ -169,7 +164,10 @@ Backend-specific behavior never enters `src/core/` directly. Everything goes thr
 
 ## Trust boundary
 
-WorkspaceGuard trusts an upstream identity header (default: `Cf-Access-Authenticated-User-Email`) to resolve the workspace. It must never be directly reachable from the network, only from behind whatever trusted proxy sets that header (Cloudflare Access, Tailscale, etc.). This is documented, not code-enforced.
+WorkspaceGuard trusts an upstream identity header (default: `Cf-Access-Authenticated-User-Email`) to resolve the workspace.
+
+> [!WARNING]
+> This service must never be directly reachable from the network. Only run it behind a trusted proxy that sets that header (Cloudflare Access, Tailscale, etc.). This boundary is documented, not code-enforced.
 
 ## What's real vs. not yet built
 
