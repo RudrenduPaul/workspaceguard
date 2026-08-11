@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "workspaceguard-cli"
-version = "0.1.6"
+version = "0.1.7"
 description = "Per-workspace usage metering and fail-closed quota caps for shared self-hosted AI assistant deployments (Odysseus and compatible backends). Genuine independent Python port with the same CLI and --json shapes as the npm package."
 readme = "README.md"
 requires-python = ">=3.9"

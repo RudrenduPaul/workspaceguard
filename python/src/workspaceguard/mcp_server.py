@@ -32,48 +32,46 @@ from mcp.server import MCPServer
 _CLI_NAME = "workspaceguard"
 _TIMEOUT_SECONDS = 30
 
-_FALLBACK_DESCRIPTION = (
-    "Runs the workspaceguard CLI with the given argument list and returns its parsed JSON "
-    "output. workspaceguard meters per-workspace usage and enforces fail-closed monthly "
-    "message caps for a shared self-hosted AI assistant deployment. Commands: 'init', "
-    "'add-workspace <id> --identity <value>', 'status', 'usage', 'set-cap <id> <count|none>', "
-    "'rotate-key <id>', and 'scan'. All accept '--data-dir <path>'. Always pass '--json' so "
-    "the output can be parsed as structured data, e.g. run(args=['usage', '--json']) or "
-    "run(args=['status', '--json'])."
+_TOOL_DESCRIPTION = (
+    "Executes one workspaceguard subcommand against the local encrypted vault and usage "
+    "store, and returns its parsed JSON output. Call this to check or manage per-workspace "
+    "message quotas for a shared self-hosted AI assistant deployment: see who is close to "
+    "their monthly cap, register a new workspace, change a cap, rotate a compromised vault "
+    "key, or audit isolation config for misconfigurations. Do not call it for anything "
+    "outside workspaceguard's own domain (it has no knowledge of the assistant backend "
+    "itself, only of the sidecar's quota/vault state).\n\n"
+    "Prerequisites: the `workspaceguard` binary must be on PATH (bundled with this package); "
+    "no API key is required. The data directory (config, vault, usage counters) defaults to "
+    "$WORKSPACEGUARD_DATA_DIR or ~/.workspaceguard, and must already exist -- run "
+    "run(args=['init']) once per deployment before any other command, or every call will "
+    "report an uninitialized store.\n\n"
+    "Side effects and mutation: 'status', 'usage', and 'scan' are read-only and safe to call "
+    "at any frequency. 'init', 'add-workspace', 'set-cap', and 'rotate-key' write to the data "
+    "directory on disk -- 'add-workspace' is idempotent (repeat calls for the same id are a "
+    "no-op), but 'rotate-key' permanently re-encrypts a workspace's secrets under a new key "
+    "and invalidates the old ciphertext, so it cannot be undone by calling it again. No "
+    "network calls are made; everything is local disk I/O. This tool never raises -- a "
+    "missing binary, launch failure, timeout, non-zero exit, or unparseable stdout is always "
+    "returned as {\"error\": ...} instead of an exception.\n\n"
+    "Parameter `args` is the literal argv you would type after `workspaceguard` on the "
+    "command line, as a list of strings (flags and values as separate elements). Real "
+    "examples: run(args=[\"usage\", \"--json\"]) for per-workspace message counts, caps, and "
+    "percent-used this period; run(args=[\"add-workspace\", \"alex\", \"--identity\", "
+    "\"alex@example.com\"]) to register a workspace (the identity value must immediately "
+    "follow the id, not stand alone as a flag); run(args=[\"set-cap\", \"alex\", \"1000\"]) or "
+    "run(args=[\"set-cap\", \"alex\", \"none\"]) to set or clear a monthly cap; "
+    "run(args=[\"rotate-key\", \"alex\"]) to rotate a vault key; run(args=[\"scan\", "
+    "\"--json\"]) to check isolation config for misconfigurations. Append '--data-dir <path>' "
+    "to any call to target a non-default data directory, and pass '--json' whenever the "
+    "subcommand supports it (all except 'add-workspace', 'set-cap', and 'rotate-key', which "
+    "only print a short confirmation line either way).\n\n"
+    "Returns a dict parsed from the CLI's stdout JSON on success (shape varies by "
+    "subcommand, e.g. {\"ok\": true, \"usage\": [{\"id\": ..., \"count\": ..., \"cap\": "
+    "...}, ...]} for 'usage'), or {\"returncode\", \"stdout\", \"stderr\"} if stdout wasn't "
+    "valid JSON, or {\"error\": ...} on failure. Pass run(args=[\"--help\"]) or "
+    "run(args=[\"<subcommand>\", \"--help\"]) to fetch the CLI's own current help text for "
+    "any detail not covered here."
 )
-
-
-def _build_tool_description() -> str:
-    """Builds the `run` tool's description from the real `workspaceguard --help` output at
-    import time, so the description an agent sees always matches the installed CLI's
-    actual subcommands. Falls back to a safe static description if the CLI can't be
-    found on PATH or the subprocess call fails for any reason."""
-    cli_path = shutil.which(_CLI_NAME)
-    if cli_path is None:
-        return _FALLBACK_DESCRIPTION
-
-    try:
-        result = subprocess.run(
-            [cli_path, "--help"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return _FALLBACK_DESCRIPTION
-
-    help_text = (result.stdout or result.stderr or "").strip()
-    if not help_text:
-        return _FALLBACK_DESCRIPTION
-
-    return (
-        "Runs the workspaceguard CLI with the given argument list and returns its parsed "
-        f"JSON output. Always pass '--json' when the subcommand supports it. Real "
-        f"`workspaceguard --help` output:\n\n{help_text}"
-    )
-
-
-_TOOL_DESCRIPTION = _build_tool_description()
 
 mcp = MCPServer("workspaceguard-cli")
 
