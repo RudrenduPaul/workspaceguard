@@ -6,6 +6,20 @@ repo root) and the PyPI package (`workspaceguard-cli`, Python, `python/`)
 -- since they implement the same design; entries note which distribution
 they apply to.
 
+## [Python 0.1.6] - MCP server
+
+- **Added an MCP (Model Context Protocol) server** to the Python
+  distribution: `pip install "workspaceguard-cli[mcp]"` pulls in the
+  optional `mcp` extra, and `workspaceguard-mcp` starts a stdio MCP server
+  exposing one tool, `run`, a generic subprocess wrapper around the
+  `workspaceguard` CLI. Every subprocess failure mode (missing binary,
+  launch error, timeout, non-zero exit, unparseable stdout) is caught and
+  returned as `{"error": ...}` instead of raising.
+- Uses `mcp.server.MCPServer` (the current SDK class as of `mcp>=2.0.0`),
+  not the deprecated `FastMCP`.
+- No change to the npm distribution or to any existing CLI/library
+  behavior.
+
 ## [0.1.6] - npm only -- fix silent no-op on global/npx install
 
 **Known issue on the currently published `0.1.5` npm release**: a clean

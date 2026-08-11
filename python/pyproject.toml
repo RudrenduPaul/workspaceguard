@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "workspaceguard-cli"
-version = "0.1.5"
+version = "0.1.6"
 description = "Per-workspace usage metering and fail-closed quota caps for shared self-hosted AI assistant deployments (Odysseus and compatible backends). Genuine independent Python port with the same CLI and --json shapes as the npm package."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -41,6 +41,11 @@ dev = [
   "build>=1.0,<2",
   "twine>=5.0,<7",
 ]
+# The mcp package requires Python >=3.10, narrower than this project's own >=3.9 floor, so
+# it's simply not installable on 3.9-only environments -- that's fine, it's optional.
+# Pinned to >=2.0.0: mcp_server.py uses `mcp.server.MCPServer`, which replaced
+# `mcp.server.fastmcp.FastMCP` in the 2.0.0 release.
+mcp = ["mcp[cli]>=2.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/RudrenduPaul/workspaceguard"
@@ -53,6 +58,10 @@ Documentation = "https://github.com/RudrenduPaul/workspaceguard/blob/main/docs/g
 
 [project.scripts]
 workspaceguard = "workspaceguard.cli:main"
+workspaceguard-mcp = "workspaceguard.mcp_server:main"
+
+[tool.hatch.build]
+exclude = [".venv*/"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/workspaceguard"]

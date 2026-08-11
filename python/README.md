@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.RudrenduPaul/workspaceguard -->
+
 # workspaceguard-cli (Python)
 
 Per-workspace usage metering and quota caps for one shared self-hosted AI
@@ -127,6 +129,46 @@ asyncio.run(main())
 The library API is async (`asyncio`), matching the async architecture of
 the original TypeScript source rather than flattening it to synchronous
 calls.
+
+## MCP Server
+
+This package ships a [Model Context Protocol](https://modelcontextprotocol.io)
+server, so an MCP-compatible agent (Claude Desktop, Claude Code, an
+orchestrator) can call WorkspaceGuard directly as a tool instead of
+shelling out to the CLI and parsing text.
+
+```bash
+pip install "workspaceguard-cli[mcp]"
+```
+
+It exposes one tool, `run`, a generic subprocess wrapper: pass it the same
+argument list you'd pass on the command line, and it shells out to the
+installed `workspaceguard` binary, parses the resulting JSON, and returns
+it. Every failure mode (missing binary, launch error, timeout, non-zero
+exit, unparseable output) comes back as a plain `{"error": ...}` dict
+instead of raising, so a bad call can't crash the server.
+
+```python
+run(args=["usage", "--json"])
+# -> {"ok": true, "usage": [{"workspaceId": "alex", "identity": "alex@example.com", "monthlyMessageCap": 1000, "percentUsed": 0, "period": "2026-08", "messageCount": 0, "estimatedBytes": 0}]}
+```
+
+To register it with an MCP-compatible client such as Claude Desktop, add
+it to the client's server config:
+
+```json
+{
+  "mcpServers": {
+    "workspaceguard": {
+      "command": "workspaceguard-mcp"
+    }
+  }
+}
+```
+
+This assumes `workspaceguard-mcp` is already on `PATH` (installed via the
+`mcp` extra above). If you installed it somewhere else, replace
+`"command"` with the full path to the console script.
 
 ## How it works
 
