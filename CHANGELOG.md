@@ -6,6 +6,18 @@ repo root) and the PyPI package (`workspaceguard-cli`, Python, `python/`)
 -- since they implement the same design; entries note which distribution
 they apply to.
 
+## [0.1.7 npm / Python 0.1.8] - 2026-09-24 - Dependency upgrades and Trusted Publishing
+
+- **npm (`0.1.7`)**: runtime dependency `yaml` raised to `^2.9.1` (was `^2.5.0`),
+  TypeScript 7 and `@types/node` 26 for the build. Node support floor is unchanged
+  (`>=20`).
+- **Python (`0.1.8`)**: `cryptography` range widened to `>=42,<51` (was `<46`); dev
+  tooling ranges (`pytest`, `pytest-asyncio`, `twine`) widened. Python support floor is
+  unchanged. `__version__` in `workspaceguard/__init__.py` is synced to the package
+  version (it had drifted to `0.1.5`).
+- npm publishing moves to npm Trusted Publishing (OIDC), so no long-lived npm token is
+  used. The publish workflow runs on Node 24 with the latest npm.
+
 ## [Python 0.1.6] - MCP server
 
 - **Added an MCP (Model Context Protocol) server** to the Python

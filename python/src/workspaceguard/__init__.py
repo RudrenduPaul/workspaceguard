@@ -34,7 +34,7 @@ from .types import (
 )
 from .usage import QuotaExceededError, WorkspaceUsage
 
-__version__ = "0.1.5"
+__version__ = "0.1.8"
 
 
 async def create_workspace_guard(
